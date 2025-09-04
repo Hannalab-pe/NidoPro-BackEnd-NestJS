@@ -1,6 +1,7 @@
 import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Estudiante } from 'src/estudiante/entities/estudiante.entity';
 import { Trabajador } from 'src/trabajador/entities/trabajador.entity';
+import { PensionEstudiante } from 'src/pension-estudiante/entities/pension-estudiante.entity';
 
 @Index("idx_caja_simple_fecha", ["fecha", "hora"], {})
 @Index("idx_caja_simple_tipo_categoria", ["tipo", "categoria", "estado"], {})
@@ -143,4 +144,30 @@ export class CajaSimple {
     @ManyToOne(() => Trabajador, { nullable: true })
     @JoinColumn({ name: "anulado_por" })
     anuladoPorTrabajador: Trabajador;
+
+
+    @Column("uuid", {
+        name: "id_pension_relacionada",
+        nullable: true
+    })
+    idPensionRelacionada: string | null;
+
+    @Column("varchar", {
+        name: "numero_transaccion",
+        length: 20,
+        nullable: true
+    })
+    numeroTransaccion: string | null;
+
+    @Column("varchar", {
+        name: "referencia_externa",
+        length: 50,
+        nullable: true
+    })
+    referenciaExterna: string | null;
+
+    // Relación opcional con pensión
+    @ManyToOne(() => PensionEstudiante, { nullable: true })
+    @JoinColumn({ name: "id_pension_relacionada" })
+    pensionRelacionada: PensionEstudiante;
 }

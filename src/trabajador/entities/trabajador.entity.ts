@@ -9,7 +9,6 @@ import {
 import { Usuario } from "src/usuario/entities/usuario.entity";
 import { AsignacionAula } from "src/asignacion-aula/entities/asignacion-aula.entity";
 import { AsignacionCurso } from "src/asignacion-curso/entities/asignacion-curso.entity";
-import { Caja } from "src/caja/entities/caja.entity";
 import { ContratoTrabajador } from "src/contrato-trabajador/entities/contrato-trabajador.entity";
 import { Cronograma } from "src/cronograma/entities/cronograma.entity";
 import { DetallePlanilla } from "src/detalle-planilla/entities/detalle-planilla.entity";
@@ -98,9 +97,6 @@ export class Trabajador {
         (asignacionCurso) => asignacionCurso.idTrabajador
     )
     asignacionCursos: AsignacionCurso[];
-
-    @OneToMany(() => Caja, (caja) => caja.idTrabajadorResponsable)
-    cajas: Caja[];
 
     @OneToMany(
         () => ContratoTrabajador,

@@ -57,4 +57,19 @@ export class CreateCajaSimpleDto {
     @IsOptional()
     @IsDateString()
     fecha?: string;
+
+    // Campos adicionales para trazabilidad
+    @IsOptional()
+    @IsUUID()
+    idPensionRelacionada?: string;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(20)
+    numeroTransaccion?: string;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(50)
+    referenciaExterna?: string;
 }

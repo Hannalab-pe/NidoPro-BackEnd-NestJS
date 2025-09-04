@@ -36,7 +36,6 @@ import { TipoSeguroModule } from './tipo-seguro/tipo-seguro.module';
 import { SeguroTrabajadorModule } from './seguro-trabajador/seguro-trabajador.module';
 import { PlanillaMensualModule } from './planilla-mensual/planilla-mensual.module';
 import { DetallePlanillaModule } from './detalle-planilla/detalle-planilla.module';
-import { CajaModule } from './caja/caja.module';
 import { PensionEstudianteModule } from './pension-estudiante/pension-estudiante.module';
 import { TipoContratoModule } from './tipo-contrato/tipo-contrato.module';
 import { ContratoTrabajadorModule } from './contrato-trabajador/contrato-trabajador.module';
@@ -94,7 +93,6 @@ import { ContactoEmergenciaModule } from './contacto-emergencia/contacto-emergen
     SeguroTrabajadorModule,
     PlanillaMensualModule,
     DetallePlanillaModule,
-    CajaModule,
     PensionEstudianteModule,
     TipoContratoModule,
     ContratoTrabajadorModule,
