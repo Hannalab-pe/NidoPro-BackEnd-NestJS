@@ -157,7 +157,6 @@ export class MatriculaService {
             contactoEmergencia.telefono = contactoData.telefono;
             contactoEmergencia.email = contactoData.email || null;
             contactoEmergencia.tipoContacto = contactoData.tipoContacto;
-            contactoEmergencia.relacionEstudiante = contactoData.relacionEstudiante;
             contactoEmergencia.esPrincipal = contactoData.esPrincipal || false;
             contactoEmergencia.prioridad = contactoData.prioridad || 1;
             contactoEmergencia.idEstudiante = estudiante;
@@ -310,7 +309,6 @@ export class MatriculaService {
             telefono: true,
             email: true,
             tipoContacto: true,
-            relacionEstudiante: true,
             esPrincipal: true,
             prioridad: true
           }
