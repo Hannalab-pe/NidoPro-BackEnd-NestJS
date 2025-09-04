@@ -31,8 +31,8 @@ export class CreateDetallePlanillaDto {
     description: 'Sueldo base del trabajador',
     example: '2500.00',
   })
-  @IsString({ message: 'El sueldo base debe ser un string decimal' })
-  sueldoBase: string;
+  @IsDecimal({}, { message: 'El sueldo base debe ser un número decimal' })
+  sueldoBase: number;
 
   @ApiProperty({
     description: 'Bonificación familiar',
@@ -40,8 +40,8 @@ export class CreateDetallePlanillaDto {
     required: false,
   })
   @IsOptional()
-  @IsString({ message: 'La bonificación familiar debe ser un string decimal' })
-  bonificacionFamiliar?: string;
+  @IsDecimal({}, { message: 'La bonificación familiar debe ser un número' })
+  bonificacionFamiliar?: number;
 
   @ApiProperty({
     description: 'Asignación familiar',
@@ -49,8 +49,11 @@ export class CreateDetallePlanillaDto {
     required: false,
   })
   @IsOptional()
-  @IsString({ message: 'La asignación familiar debe ser un string decimal' })
-  asignacionFamiliar?: string;
+  @IsDecimal(
+    {},
+    { message: 'La asignación familiar debe ser un número decimal' },
+  )
+  asignacionFamiliar?: number;
 
   @ApiProperty({
     description: 'Otros ingresos',
@@ -58,8 +61,8 @@ export class CreateDetallePlanillaDto {
     required: false,
   })
   @IsOptional()
-  @IsString({ message: 'Otros ingresos debe ser un string decimal' })
-  otrosIngresos?: string;
+  @IsDecimal({}, { message: 'Otros ingresos debe ser un número decimal' })
+  otrosIngresos?: number;
 
   @ApiProperty({
     description: 'Descuento AFP',
@@ -67,8 +70,8 @@ export class CreateDetallePlanillaDto {
     required: false,
   })
   @IsOptional()
-  @IsString({ message: 'El descuento AFP debe ser un string decimal' })
-  descuentoAfp?: string;
+  @IsDecimal({}, { message: 'El descuento AFP debe ser un número decimal' })
+  descuentoAfp?: number;
 
   @ApiProperty({
     description: 'Descuento EsSalud',
@@ -76,8 +79,8 @@ export class CreateDetallePlanillaDto {
     required: false,
   })
   @IsOptional()
-  @IsString({ message: 'El descuento EsSalud debe ser un string decimal' })
-  descuentoEssalud?: string;
+  @IsDecimal({}, { message: 'El descuento EsSalud debe ser un número decimal' })
+  descuentoEssalud?: number;
 
   @ApiProperty({
     description: 'Descuento ONP',
@@ -85,8 +88,8 @@ export class CreateDetallePlanillaDto {
     required: false,
   })
   @IsOptional()
-  @IsString({ message: 'El descuento ONP debe ser un string decimal' })
-  descuentoOnp?: string;
+  @IsDecimal({}, { message: 'El descuento ONP debe ser un número decimal' })
+  descuentoOnp?: number;
 
   @ApiProperty({
     description: 'Otros descuentos',
@@ -94,8 +97,8 @@ export class CreateDetallePlanillaDto {
     required: false,
   })
   @IsOptional()
-  @IsString({ message: 'Otros descuentos debe ser un string decimal' })
-  otrosDescuentos?: string;
+  @IsDecimal({}, { message: 'Otros descuentos debe ser un número decimal' })
+  otrosDescuentos?: number;
 
   @ApiProperty({
     description: 'Días trabajados en el mes',
