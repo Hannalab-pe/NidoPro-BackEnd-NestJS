@@ -21,9 +21,12 @@ export class DetallePlanillaService {
     private readonly planillaMensualRepository: Repository<PlanillaMensual>,
     @InjectRepository(Trabajador)
     private readonly trabajadorRepository: Repository<Trabajador>,
-  ) { }
+  ) {}
 
-  async updatePlanilla(id: string, fechaPagoReal: Date): Promise<{
+  async updatePlanilla(
+    id: string,
+    fechaPagoReal: Date,
+  ): Promise<{
     success: boolean;
     message: string;
     updatedCount: number;
@@ -83,35 +86,16 @@ export class DetallePlanillaService {
       );
     }
 
-    // Calcular totales
-    const sueldoBase = parseFloat(createDetallePlanillaDto.sueldoBase);
-    const bonificacionFamiliar = parseFloat(
-      createDetallePlanillaDto.bonificacionFamiliar || '0.00',
-    );
-    const asignacionFamiliar = parseFloat(
-      createDetallePlanillaDto.asignacionFamiliar || '0.00',
-    );
-    const otrosIngresos = parseFloat(
-      createDetallePlanillaDto.otrosIngresos || '0.00',
-    );
-
-    const descuentoAfp = parseFloat(
-      createDetallePlanillaDto.descuentoAfp || '0.00',
-    );
-    const descuentoEssalud = parseFloat(
-      createDetallePlanillaDto.descuentoEssalud || '0.00',
-    );
-    const descuentoOnp = parseFloat(
-      createDetallePlanillaDto.descuentoOnp || '0.00',
-    );
-    const otrosDescuentos = parseFloat(
-      createDetallePlanillaDto.otrosDescuentos || '0.00',
-    );
-
     const totalIngresos =
-      sueldoBase + bonificacionFamiliar + asignacionFamiliar + otrosIngresos;
+      createDetallePlanillaDto.sueldoBase +
+      (createDetallePlanillaDto.bonificacionFamiliar || 0) +
+      (createDetallePlanillaDto.asignacionFamiliar || 0) +
+      (createDetallePlanillaDto.otrosIngresos || 0);
     const totalDescuentos =
-      descuentoAfp + descuentoEssalud + descuentoOnp + otrosDescuentos;
+      (createDetallePlanillaDto.descuentoAfp || 0) +
+      (createDetallePlanillaDto.descuentoEssalud || 0) +
+      (createDetallePlanillaDto.descuentoOnp || 0) +
+      (createDetallePlanillaDto.otrosDescuentos || 0);
     const sueldoNeto = totalIngresos - totalDescuentos;
 
     // Crear el detalle de planilla
@@ -119,17 +103,16 @@ export class DetallePlanillaService {
       idPlanillaMensual: createDetallePlanillaDto.idPlanillaMensual,
       idTrabajador: createDetallePlanillaDto.idTrabajador,
       sueldoBase: createDetallePlanillaDto.sueldoBase,
-      bonificacionFamiliar:
-        createDetallePlanillaDto.bonificacionFamiliar || '0.00',
-      asignacionFamiliar: createDetallePlanillaDto.asignacionFamiliar || '0.00',
-      otrosIngresos: createDetallePlanillaDto.otrosIngresos || '0.00',
-      totalIngresos: totalIngresos.toFixed(2),
-      descuentoAfp: createDetallePlanillaDto.descuentoAfp || '0.00',
-      descuentoEssalud: createDetallePlanillaDto.descuentoEssalud || '0.00',
-      descuentoOnp: createDetallePlanillaDto.descuentoOnp || '0.00',
-      otrosDescuentos: createDetallePlanillaDto.otrosDescuentos || '0.00',
-      totalDescuentos: totalDescuentos.toFixed(2),
-      sueldoNeto: sueldoNeto.toFixed(2),
+      bonificacionFamiliar: createDetallePlanillaDto.bonificacionFamiliar || 0,
+      asignacionFamiliar: createDetallePlanillaDto.asignacionFamiliar || 0,
+      otrosIngresos: createDetallePlanillaDto.otrosIngresos || 0,
+      totalIngresos: totalIngresos,
+      descuentoAfp: createDetallePlanillaDto.descuentoAfp || 0,
+      descuentoEssalud: createDetallePlanillaDto.descuentoEssalud || 0,
+      descuentoOnp: createDetallePlanillaDto.descuentoOnp || 0,
+      otrosDescuentos: createDetallePlanillaDto.otrosDescuentos || 0,
+      totalDescuentos: totalDescuentos,
+      sueldoNeto: sueldoNeto,
       diasTrabajados: createDetallePlanillaDto.diasTrabajados || 30,
       diasFaltados: createDetallePlanillaDto.diasFaltados || 0,
       estadoPago: createDetallePlanillaDto.estadoPago || EstadoPago.PENDIENTE,
@@ -325,41 +308,31 @@ export class DetallePlanillaService {
     );
 
     if (hayActualizacionCalculable) {
-      const sueldoBase = parseFloat(
-        updateDetallePlanillaDto.sueldoBase || detalle.sueldoBase,
-      );
-      const bonificacionFamiliar = parseFloat(
+      const sueldoBase =
+        updateDetallePlanillaDto.sueldoBase || detalle.sueldoBase;
+      const bonificacionFamiliar =
         updateDetallePlanillaDto.bonificacionFamiliar ||
         detalle.bonificacionFamiliar ||
-        '0.00',
-      );
-      const asignacionFamiliar = parseFloat(
+        0;
+      const asignacionFamiliar =
         updateDetallePlanillaDto.asignacionFamiliar ||
         detalle.asignacionFamiliar ||
-        '0.00',
-      );
-      const otrosIngresos = parseFloat(
-        updateDetallePlanillaDto.otrosIngresos ||
-        detalle.otrosIngresos ||
-        '0.00',
-      );
+        0;
+      const otrosIngresos =
+        updateDetallePlanillaDto.otrosIngresos || detalle.otrosIngresos || 0;
 
-      const descuentoAfp = parseFloat(
-        updateDetallePlanillaDto.descuentoAfp || detalle.descuentoAfp || '0.00',
-      );
-      const descuentoEssalud = parseFloat(
+      const descuentoAfp =
+        updateDetallePlanillaDto.descuentoAfp || detalle.descuentoAfp || 0;
+      const descuentoEssalud =
         updateDetallePlanillaDto.descuentoEssalud ||
         detalle.descuentoEssalud ||
-        '0.00',
-      );
-      const descuentoOnp = parseFloat(
-        updateDetallePlanillaDto.descuentoOnp || detalle.descuentoOnp || '0.00',
-      );
-      const otrosDescuentos = parseFloat(
+        0;
+      const descuentoOnp =
+        updateDetallePlanillaDto.descuentoOnp || detalle.descuentoOnp || 0;
+      const otrosDescuentos =
         updateDetallePlanillaDto.otrosDescuentos ||
         detalle.otrosDescuentos ||
-        '0.00',
-      );
+        0;
 
       totalIngresos =
         sueldoBase + bonificacionFamiliar + asignacionFamiliar + otrosIngresos;
@@ -412,24 +385,22 @@ export class DetallePlanillaService {
     message: string;
     detalle: DetallePlanilla;
     totalesCalculados: {
-      totalIngresos: string;
-      totalDescuentos: string;
-      sueldoNeto: string;
+      totalIngresos: number;
+      totalDescuentos: number;
+      sueldoNeto: number;
     };
   }> {
     const detalle = await this.findOne(id);
 
-    const sueldoBase = parseFloat(detalle.sueldoBase);
-    const bonificacionFamiliar = parseFloat(
-      detalle.bonificacionFamiliar || '0.00',
-    );
-    const asignacionFamiliar = parseFloat(detalle.asignacionFamiliar || '0.00');
-    const otrosIngresos = parseFloat(detalle.otrosIngresos || '0.00');
+    const sueldoBase = detalle.sueldoBase;
+    const bonificacionFamiliar = detalle.bonificacionFamiliar || 0;
+    const asignacionFamiliar = detalle.asignacionFamiliar || 0;
+    const otrosIngresos = detalle.otrosIngresos || 0;
 
-    const descuentoAfp = parseFloat(detalle.descuentoAfp || '0.00');
-    const descuentoEssalud = parseFloat(detalle.descuentoEssalud || '0.00');
-    const descuentoOnp = parseFloat(detalle.descuentoOnp || '0.00');
-    const otrosDescuentos = parseFloat(detalle.otrosDescuentos || '0.00');
+    const descuentoAfp = detalle.descuentoAfp || 0;
+    const descuentoEssalud = detalle.descuentoEssalud || 0;
+    const descuentoOnp = detalle.descuentoOnp || 0;
+    const otrosDescuentos = detalle.otrosDescuentos || 0;
 
     const totalIngresos =
       sueldoBase + bonificacionFamiliar + asignacionFamiliar + otrosIngresos;
@@ -438,9 +409,9 @@ export class DetallePlanillaService {
     const sueldoNeto = totalIngresos - totalDescuentos;
 
     await this.detallePlanillaRepository.update(id, {
-      totalIngresos: totalIngresos.toFixed(2),
-      totalDescuentos: totalDescuentos.toFixed(2),
-      sueldoNeto: sueldoNeto.toFixed(2),
+      totalIngresos: totalIngresos,
+      totalDescuentos: totalDescuentos,
+      sueldoNeto: sueldoNeto,
       actualizadoEn: new Date(),
     });
 
@@ -451,9 +422,9 @@ export class DetallePlanillaService {
       message: 'Totales recalculados correctamente',
       detalle: detalleActualizado,
       totalesCalculados: {
-        totalIngresos: totalIngresos.toFixed(2),
-        totalDescuentos: totalDescuentos.toFixed(2),
-        sueldoNeto: sueldoNeto.toFixed(2),
+        totalIngresos: totalIngresos,
+        totalDescuentos: totalDescuentos,
+        sueldoNeto: sueldoNeto,
       },
     };
   }
@@ -473,14 +444,10 @@ export class DetallePlanillaService {
     idTrabajador: string,
     sueldoData: any,
   ): Promise<DetallePlanilla> {
-    const sueldoBase = parseFloat(sueldoData.sueldoBase);
-    const bonificacionFamiliar = parseFloat(
-      sueldoData.bonificacionFamiliar || '0.00',
-    );
-    const asignacionFamiliar = parseFloat(
-      sueldoData.asignacionFamiliar || '0.00',
-    );
-    const otrosIngresos = parseFloat(sueldoData.otrosIngresos || '0.00');
+    const sueldoBase = sueldoData.sueldoBase;
+    const bonificacionFamiliar = sueldoData.bonificacionFamiliar || 0;
+    const asignacionFamiliar = sueldoData.asignacionFamiliar || 0;
+    const otrosIngresos = sueldoData.otrosIngresos || 0;
 
     const totalIngresos =
       sueldoBase + bonificacionFamiliar + asignacionFamiliar + otrosIngresos;
@@ -492,23 +459,23 @@ export class DetallePlanillaService {
     const detalle = this.detallePlanillaRepository.create({
       idPlanillaMensual: idPlanillaMensual,
       idTrabajador: idTrabajador,
-      sueldoBase: sueldoBase.toFixed(2),
-      bonificacionFamiliar: bonificacionFamiliar.toFixed(2),
-      asignacionFamiliar: asignacionFamiliar.toFixed(2),
-      otrosIngresos: otrosIngresos.toFixed(2),
-      totalIngresos: totalIngresos.toFixed(2),
-      descuentoAfp: descuentoAfp.toFixed(2),
-      descuentoEssalud: descuentoEssalud.toFixed(2),
-      descuentoOnp: '0.00',
-      otrosDescuentos: '0.00',
-      totalDescuentos: totalDescuentos.toFixed(2),
-      sueldoNeto: sueldoNeto.toFixed(2),
+      sueldoBase: sueldoBase,
+      bonificacionFamiliar: bonificacionFamiliar,
+      asignacionFamiliar: asignacionFamiliar,
+      otrosIngresos: otrosIngresos,
+      totalIngresos: totalIngresos,
+      descuentoAfp: descuentoAfp,
+      descuentoEssalud: descuentoEssalud,
+      descuentoOnp: 0,
+      otrosDescuentos: 0,
+      totalDescuentos: totalDescuentos,
+      sueldoNeto: sueldoNeto,
       diasTrabajados: 30,
       diasFaltados: 0,
       estadoPago: EstadoPago.PENDIENTE,
-      ctsSemestral: '0.00',
-      ctsMensual: '0.00',
-      gratificacion: '0.00',
+      ctsSemestral: 0,
+      ctsMensual: 0,
+      gratificacion: 0,
       fechaGratificacionDeposito: null,
       fechaCtsDeposito: null,
       creadoEn: new Date(),
@@ -518,7 +485,10 @@ export class DetallePlanillaService {
     return await this.detallePlanillaRepository.save(detalle);
   }
 
-  async actualizarEstadoPagoPlanilla(idPlanilla: string, fechaPago: Date): Promise<void> {
+  async actualizarEstadoPagoPlanilla(
+    idPlanilla: string,
+    fechaPago: Date,
+  ): Promise<void> {
     await this.detallePlanillaRepository.update(
       { idPlanillaMensual: idPlanilla },
       {
