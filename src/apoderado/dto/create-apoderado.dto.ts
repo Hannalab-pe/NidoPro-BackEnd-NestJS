@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, Length } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Length, IsBoolean } from 'class-validator';
 
 export class CreateApoderadoDto {
     @ApiProperty({ example: 'Juan', description: 'Nombre del apoderado' })
@@ -38,4 +38,15 @@ export class CreateApoderadoDto {
     @IsString()
     @Length(6, 15)
     documentoIdentidad: string;
+
+    @ApiProperty({ example: true, description: 'Es el apoderado principal (quien paga la matrícula)', required: false })
+    @IsOptional()
+    @IsBoolean()
+    esPrincipal?: boolean;
+
+    @ApiProperty({ example: 'madre', description: 'Tipo de apoderado: padre, madre, tutor, abuelo, etc.', required: false })
+    @IsOptional()
+    @IsString()
+    @Length(1, 50)
+    tipoApoderado?: string;
 }

@@ -44,6 +44,7 @@ import { HistorialContratoModule } from './historial-contrato/historial-contrato
 import { RenovacionContratoModule } from './renovacion-contrato/renovacion-contrato.module';
 import { AnotacionesEstudianteModule } from './anotaciones-estudiante/anotaciones-estudiante.module';
 import { CajaSimpleModule } from './caja-simple/caja-simple.module';
+import { ContactoEmergenciaModule } from './contacto-emergencia/contacto-emergencia.module';
 
 @Module({
   imports: [
@@ -101,6 +102,7 @@ import { CajaSimpleModule } from './caja-simple/caja-simple.module';
     RenovacionContratoModule,
     AnotacionesEstudianteModule,
     CajaSimpleModule,
+    ContactoEmergenciaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

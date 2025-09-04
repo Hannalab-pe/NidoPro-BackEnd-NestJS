@@ -9,6 +9,7 @@ import { GradoService } from 'src/grado/grado.service';
 import { SearchMatriculaDto } from './dto/search-matricula.dto';
 import { MatriculaAula } from 'src/matricula-aula/entities/matricula-aula.entity';
 import { AulaService } from 'src/aula/aula.service';
+import { ContactoEmergencia } from 'src/contacto-emergencia/entities/contacto-emergencia.entity';
 
 @Injectable()
 export class MatriculaService {
@@ -63,6 +64,18 @@ export class MatriculaService {
           throw new Error("Para crear un apoderado son requeridos: nombre, apellido, tipoDocumentoIdentidad y documentoIdentidad");
         }
 
+        if (Array.isArray(createMatriculaDto.apoderadoData)) {
+          createMatriculaDto.apoderadoData.forEach(apoderadoData => {
+            const createApoderadoDto = {
+              nombre: apoderadoData.nombre,
+              apellido: apoderadoData.apellido,
+              tipoDocumentoIdentidad: apoderadoData.tipoDocumentoIdentidad,
+              documentoIdentidad: apoderadoData.documentoIdentidad,
+            };
+            apoderado = this.apoderadoService.create(createApoderadoDto);
+          });
+        }
+
         // Crear DTO para el servicio de apoderado
         const createApoderadoDto: any = {
           nombre: createMatriculaDto.apoderadoData.nombre,
@@ -72,6 +85,8 @@ export class MatriculaService {
           direccion: createMatriculaDto.apoderadoData.direccion || null,
           tipoDocumentoIdentidad: createMatriculaDto.apoderadoData.tipoDocumentoIdentidad,
           documentoIdentidad: createMatriculaDto.apoderadoData.documentoIdentidad,
+          esPrincipal: createMatriculaDto.apoderadoData.esPrincipal ?? true, // Por defecto es principal
+          tipoApoderado: createMatriculaDto.apoderadoData.tipoApoderado || 'principal',
         };
 
         apoderado = await this.apoderadoService.create(createApoderadoDto);
@@ -102,6 +117,7 @@ export class MatriculaService {
       }
 
       // Si aún no existe, crear nuevo estudiante
+      // Si aún no existe, crear nuevo estudiante
       if (!estudiante) {
         // Validar que se proporcionaron datos del estudiante
         if (!createMatriculaDto.estudianteData) {
@@ -116,22 +132,39 @@ export class MatriculaService {
           throw new Error("Para crear un estudiante son requeridos: nombre, apellido, idRol y nroDocumento");
         }
 
-        // Crear DTO para el servicio de estudiante
+        // 1️⃣ PRIMERO: Crear DTO para el servicio de estudiante
         const createEstudianteDto: any = {
           nombre: createMatriculaDto.estudianteData.nombre,
           apellido: createMatriculaDto.estudianteData.apellido,
-          contactoEmergencia: createMatriculaDto.estudianteData.contactoEmergencia || null,
-          nroEmergencia: createMatriculaDto.estudianteData.nroEmergencia || null,
           tipoDocumento: createMatriculaDto.estudianteData.tipoDocumento || null,
           nroDocumento: createMatriculaDto.estudianteData.nroDocumento,
           observaciones: createMatriculaDto.estudianteData.observaciones || null,
           idRol: createMatriculaDto.estudianteData.idRol,
+          imagen_estudiante: createMatriculaDto.estudianteData.imagen_estudiante || null,
         };
 
+        // 2️⃣ CREAR EL ESTUDIANTE
         const resultadoEstudiante = await this.estudianteService.create(createEstudianteDto);
-
-        // Manejar diferentes formatos de respuesta del servicio de estudiante
         estudiante = resultadoEstudiante.estudiante || resultadoEstudiante;
+
+        // 3️⃣ DESPUÉS: Crear contactos de emergencia (ahora estudiante ya existe)
+        if (createMatriculaDto.estudianteData?.contactosEmergencia &&
+          createMatriculaDto.estudianteData.contactosEmergencia.length > 0) {
+          for (const contactoData of createMatriculaDto.estudianteData.contactosEmergencia) {
+            const contactoEmergencia = new ContactoEmergencia();
+            contactoEmergencia.nombre = contactoData.nombre;
+            contactoEmergencia.apellido = contactoData.apellido;
+            contactoEmergencia.telefono = contactoData.telefono;
+            contactoEmergencia.email = contactoData.email || null;
+            contactoEmergencia.tipoContacto = contactoData.tipoContacto;
+            contactoEmergencia.relacionEstudiante = contactoData.relacionEstudiante;
+            contactoEmergencia.esPrincipal = contactoData.esPrincipal || false;
+            contactoEmergencia.prioridad = contactoData.prioridad || 1;
+            contactoEmergencia.idEstudiante = estudiante;
+
+            await manager.save(ContactoEmergencia, contactoEmergencia);
+          }
+        }
       }
 
       // === VERIFICAR GRADO CON PENSIÓN ===
@@ -248,6 +281,7 @@ export class MatriculaService {
       relations: [
         'idEstudiante',
         'idEstudiante.idUsuario',
+        'idEstudiante.contactosEmergencia', // Nueva relación
         'idApoderado',
         'idGrado',
         'idGrado.idPension',
@@ -263,13 +297,22 @@ export class MatriculaService {
           nombre: true,
           apellido: true,
           nroDocumento: true,
-          contactoEmergencia: true,
-          nroEmergencia: true,
           observaciones: true,
           idUsuario: {
             idUsuario: true,
             usuario: true,
             estaActivo: true
+          },
+          contactosEmergencia: {
+            idContactoEmergencia: true,
+            nombre: true,
+            apellido: true,
+            telefono: true,
+            email: true,
+            tipoContacto: true,
+            relacionEstudiante: true,
+            esPrincipal: true,
+            prioridad: true
           }
         },
         idApoderado: {
@@ -279,7 +322,9 @@ export class MatriculaService {
           numero: true,
           correo: true,
           direccion: true,
-          documentoIdentidad: true
+          documentoIdentidad: true,
+          esPrincipal: true,
+          tipoApoderado: true
         },
         idGrado: {
           idGrado: true,
@@ -294,6 +339,56 @@ export class MatriculaService {
     });
   }
 
+  // === MÉTODO PARA OBTENER ESTUDIANTES CON PADRE Y MADRE ===
+  async findEstudiantesConPadres(): Promise<any[]> {
+    return await this.matriculaRepository
+      .createQueryBuilder('matricula')
+      .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
+      .leftJoinAndSelect('matricula.idApoderado', 'apoderado')
+      .leftJoinAndSelect('matricula.idGrado', 'grado')
+      .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
+      .leftJoinAndSelect('matriculaAula.aula', 'aula')
+      .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
+      .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
+      .where('contactos.tipoContacto IN (:...tipos)', { tipos: ['padre', 'madre'] })
+      .andWhere('contactos.estaActivo = :activo', { activo: true })
+      .orderBy('contactos.prioridad', 'ASC')
+      .addOrderBy('matricula.fechaIngreso', 'DESC')
+      .getMany();
+  }
+
+  // === MÉTODO PARA OBTENER SOLO CONTACTO PRINCIPAL ===
+  async findEstudiantesConContactoPrincipal(): Promise<any[]> {
+    return await this.matriculaRepository
+      .createQueryBuilder('matricula')
+      .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
+      .leftJoinAndSelect('matricula.idApoderado', 'apoderado')
+      .leftJoinAndSelect('matricula.idGrado', 'grado')
+      .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
+      .leftJoinAndSelect('matriculaAula.aula', 'aula')
+      .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
+      .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
+      .where('contactos.esPrincipal = :principal', { principal: true })
+      .andWhere('contactos.estaActivo = :activo', { activo: true })
+      .orderBy('matricula.fechaIngreso', 'DESC')
+      .getMany();
+  }
+
+  // === MÉTODO PARA OBTENER SOLO APODERADOS PRINCIPALES ===
+  async findEstudiantesConApoderadosPrincipales(): Promise<any[]> {
+    return await this.matriculaRepository
+      .createQueryBuilder('matricula')
+      .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
+      .leftJoinAndSelect('matricula.idApoderado', 'apoderado')
+      .leftJoinAndSelect('matricula.idGrado', 'grado')
+      .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
+      .leftJoinAndSelect('matriculaAula.aula', 'aula')
+      .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
+      .where('apoderado.esPrincipal = :principal', { principal: true })
+      .orderBy('matricula.fechaIngreso', 'DESC')
+      .getMany();
+  }
+
   async findAll(): Promise<Matricula[]> {
     return await this.matriculaRepository.find();
   }
@@ -305,6 +400,7 @@ export class MatriculaService {
         'idApoderado',
         'idEstudiante',
         'idEstudiante.idUsuario',
+        'idEstudiante.contactosEmergencia', // Nueva relación
         'idGrado',
         'idGrado.idPension',
         'matriculaAula',

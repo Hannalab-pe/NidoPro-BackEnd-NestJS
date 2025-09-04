@@ -42,6 +42,14 @@ export class CreateEstudianteDto {
     observaciones?: string;
 
     @ApiProperty({
+        required: false,
+        description: 'URL de la imagen del estudiante'
+    })
+    @IsString()
+    @IsOptional()
+    imagen_estudiante?: string;
+
+    @ApiProperty({
         description: 'ID del rol a asignar al estudiante'
     })
     @IsUUID(4, { message: 'ID de rol debe ser un UUID válido' })

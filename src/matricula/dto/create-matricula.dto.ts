@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUUID, IsDecimal, IsDateString, IsOptional, IsEnum, ValidateNested, IsEmail, Length } from 'class-validator';
+import { IsString, IsUUID, IsDecimal, IsDateString, IsOptional, IsEnum, ValidateNested, IsEmail, Length, IsNumber, IsBoolean } from 'class-validator';
 import { MetodoPago } from 'src/enums/metodo-pago.enum';
 import { Type } from 'class-transformer';
 
@@ -41,9 +41,60 @@ class CreateApoderadoDataDto {
     @IsOptional()
     @IsString()
     direccion?: string;
+
+    @ApiProperty({ example: true, description: 'Es el apoderado principal (quien paga la matrícula)', required: false })
+    @IsOptional()
+    @IsBoolean()
+    esPrincipal?: boolean;
+
+    @ApiProperty({ example: 'madre', description: 'Tipo de apoderado: padre, madre, tutor, abuelo, etc.', required: false })
+    @IsOptional()
+    @IsString()
+    @Length(1, 50)
+    tipoApoderado?: string;
 }
 
-// DTO para crear estudiante (campos requeridos)
+class CreateContactoEmergenciaDataDto {
+    @ApiProperty({ example: 'María', description: 'Nombre del contacto' })
+    @IsString()
+    @Length(1, 100)
+    nombre: string;
+
+    @ApiProperty({ example: 'González', description: 'Apellido del contacto' })
+    @IsString()
+    @Length(1, 100)
+    apellido: string;
+
+    @ApiProperty({ example: '+51987654321', description: 'Teléfono del contacto' })
+    @IsString()
+    @Length(1, 20)
+    telefono: string;
+
+    @ApiProperty({ example: 'maria@email.com', description: 'Email del contacto', required: false })
+    @IsOptional()
+    @IsEmail()
+    email?: string;
+
+    @ApiProperty({ example: 'madre', description: 'Tipo de contacto' })
+    @IsString()
+    @Length(1, 50)
+    tipoContacto: string;
+
+    @ApiProperty({ example: 'Madre', description: 'Relación con el estudiante' })
+    @IsString()
+    relacionEstudiante: string;
+
+    @ApiProperty({ example: true, description: 'Es contacto principal?', required: false })
+    @IsOptional()
+    @IsBoolean()
+    esPrincipal?: boolean;
+
+    @ApiProperty({ example: 1, description: 'Prioridad de contacto', required: false })
+    @IsOptional()
+    @IsNumber()
+    prioridad?: number;
+}
+
 class CreateEstudianteDataDto {
     @ApiProperty({ description: 'Nombre del estudiante' })
     @IsString()
@@ -61,16 +112,6 @@ class CreateEstudianteDataDto {
     @IsUUID()
     idRol: string;
 
-    @ApiProperty({ description: 'Contacto de emergencia', required: false })
-    @IsOptional()
-    @IsString()
-    contactoEmergencia?: string;
-
-    @ApiProperty({ description: 'Número de emergencia', required: false })
-    @IsOptional()
-    @IsString()
-    nroEmergencia?: string;
-
     @ApiProperty({ description: 'Tipo de documento', required: false })
     @IsOptional()
     @IsString()
@@ -80,6 +121,25 @@ class CreateEstudianteDataDto {
     @IsOptional()
     @IsString()
     observaciones?: string;
+
+    // ✅ AGREGAR el array de contactos:
+    @ApiProperty({
+        description: 'Lista de contactos de emergencia',
+        required: false,
+        type: [CreateContactoEmergenciaDataDto]
+    })
+    @IsOptional()
+    @ValidateNested({ each: true })
+    @Type(() => CreateContactoEmergenciaDataDto)
+    contactosEmergencia?: CreateContactoEmergenciaDataDto[];
+
+    @ApiProperty({
+        required: false,
+        description: 'URL de la imagen del estudiante'
+    })
+    @IsString()
+    @IsOptional()
+    imagen_estudiante?: string;
 }
 
 export class CreateMatriculaDto {
@@ -200,3 +260,5 @@ export class CreateMatriculaDto {
     @IsString()
     motivoPreferencia?: string;
 }
+
+

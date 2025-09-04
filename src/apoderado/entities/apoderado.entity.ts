@@ -42,6 +42,19 @@ export class Apoderado {
     })
     tipoDocumentoIdentidad: string;
 
+    @Column("boolean", {
+        name: "es_principal",
+        default: true,
+    })
+    esPrincipal: boolean;
+
+    @Column("character varying", {
+        name: "tipo_apoderado",
+        length: 50,
+        default: "principal",
+    })
+    tipoApoderado: string;
+
     @Column("date", {
         name: "creado",
         nullable: true,

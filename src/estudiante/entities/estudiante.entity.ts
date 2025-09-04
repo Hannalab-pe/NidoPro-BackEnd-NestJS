@@ -1,4 +1,5 @@
 import { Asistencia } from "src/asistencia/entities/asistencia.entity";
+import { ContactoEmergencia } from "src/contacto-emergencia/entities/contacto-emergencia.entity";
 import { Informe } from "src/informe/entities/informe.entity";
 import { LibretaBimestral } from "src/libreta-bimestral/entities/libreta-bimestral.entity";
 import { Matricula } from "src/matricula/entities/matricula.entity";
@@ -21,7 +22,6 @@ import {
     ["apellido", "nombre", "nroDocumento", "tipoDocumento"],
     {}
 )
-@Index("idx_estudiante_emergencia", ["contactoEmergencia", "nroEmergencia"], {})
 @Index("estudiante_pkey", ["idEstudiante"], { unique: true })
 @Index("estudiante_nro_documento_key", ["nroDocumento"], { unique: true })
 @Entity("estudiante", { schema: "public" })
@@ -38,20 +38,6 @@ export class Estudiante {
 
     @Column("character varying", { name: "apellido", length: 100 })
     apellido: string;
-
-    @Column("character varying", {
-        name: "contacto_emergencia",
-        nullable: true,
-        length: 200,
-    })
-    contactoEmergencia: string | null;
-
-    @Column("character varying", {
-        name: "nro_emergencia",
-        nullable: true,
-        length: 20,
-    })
-    nroEmergencia: string | null;
 
     @Column("character varying", {
         name: "tipo_documento",
@@ -113,5 +99,8 @@ export class Estudiante {
         (pensionEstudiante) => pensionEstudiante.estudiante
     )
     pensionEstudiantes: PensionEstudiante[];
+
+    @OneToMany(() => ContactoEmergencia, (contacto) => contacto.idEstudiante)
+    contactosEmergencia: ContactoEmergencia[];
 
 }
