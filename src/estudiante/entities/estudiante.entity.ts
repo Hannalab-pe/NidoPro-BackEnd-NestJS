@@ -71,6 +71,9 @@ export class Estudiante {
     @Column("text", { name: "observaciones", nullable: true })
     observaciones: string | null;
 
+    @Column("text", { name: "imagen_url", nullable: true })
+    imagen_estudiante: string | null;
+
     @Column('uuid', { name: "id_usuario" })
     id_Usuario: string;
 

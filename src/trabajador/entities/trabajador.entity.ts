@@ -9,25 +9,19 @@ import {
 import { Usuario } from "src/usuario/entities/usuario.entity";
 import { AsignacionAula } from "src/asignacion-aula/entities/asignacion-aula.entity";
 import { AsignacionCurso } from "src/asignacion-curso/entities/asignacion-curso.entity";
-import { AuditoriaFinanciera } from "src/auditoria-financiera/entities/auditoria-financiera.entity";
 import { Caja } from "src/caja/entities/caja.entity";
 import { ContratoTrabajador } from "src/contrato-trabajador/entities/contrato-trabajador.entity";
 import { Cronograma } from "src/cronograma/entities/cronograma.entity";
 import { DetallePlanilla } from "src/detalle-planilla/entities/detalle-planilla.entity";
 import { EvaluacionDocenteBimestral } from "src/evualuacion-docente-bimestral/entities/evualuacion-docente-bimestral.entity";
-import { GastoOperativo } from "src/gasto-operativo/entities/gasto-operativo.entity";
 import { HistorialContrato } from "src/historial-contrato/entities/historial-contrato.entity";
-import { HistorialReporte } from "src/historial-reporte/entities/historial-reporte.entity";
 import { Informe } from "src/informe/entities/informe.entity";
 import { ObservacionDocente } from "src/observacion-docente/entities/observacion-docente.entity";
 import { PensionEstudiante } from "src/pension-estudiante/entities/pension-estudiante.entity";
 import { PlanillaMensual } from "src/planilla-mensual/entities/planilla-mensual.entity";
-import { PresupuestoMensual } from "src/presupuesto-mensual/entities/presupuesto-mensual.entity";
 import { ProgramacionMensual } from "src/programacion-mensual/entities/programacion-mensual.entity";
 import { RenovacionContrato } from "src/renovacion-contrato/entities/renovacion-contrato.entity";
-import { ReporteProgramado } from "src/reporte-programador/entities/reporte-programado.entity";
 import { Rol } from "src/rol/entities/rol.entity";
-import { SaldoCaja } from "src/saldo-caja/entities/saldo-caja.entity";
 import { SeguroTrabajador } from "src/seguro-trabajador/entities/seguro-trabajador.entity";
 import { SueldoTrabajador } from "src/sueldo-trabajador/entities/sueldo-trabajador.entity";
 import { Tarea } from "src/tarea/entities/tarea.entity";
@@ -105,12 +99,6 @@ export class Trabajador {
     )
     asignacionCursos: AsignacionCurso[];
 
-    @OneToMany(
-        () => AuditoriaFinanciera,
-        (auditoriaFinanciera) => auditoriaFinanciera.usuarioResponsable
-    )
-    auditoriaFinancieras: AuditoriaFinanciera[];
-
     @OneToMany(() => Caja, (caja) => caja.idTrabajadorResponsable)
     cajas: Caja[];
 
@@ -154,18 +142,6 @@ export class Trabajador {
     evaluacionDocenteBimestrals2: EvaluacionDocenteBimestral[];
 
     @OneToMany(
-        () => GastoOperativo,
-        (gastoOperativo) => gastoOperativo.aprobadoPor
-    )
-    gastoOperativos: GastoOperativo[];
-
-    @OneToMany(
-        () => GastoOperativo,
-        (gastoOperativo) => gastoOperativo.solicitadoPor
-    )
-    gastoOperativos2: GastoOperativo[];
-
-    @OneToMany(
         () => HistorialContrato,
         (historialContrato) => historialContrato.idTrabajador2
     )
@@ -176,12 +152,6 @@ export class Trabajador {
         (historialContrato) => historialContrato.realizadoPor
     )
     historialContratoes2: HistorialContrato[];
-
-    @OneToMany(
-        () => HistorialReporte,
-        (historialReporte) => historialReporte.ejecutadoPor
-    )
-    historialReportes: HistorialReporte[];
 
     @OneToMany(() => Informe, (informe) => informe.idTrabajador)
     informes: Informe[];
@@ -223,12 +193,6 @@ export class Trabajador {
     planillaMensuals3: PlanillaMensual[];
 
     @OneToMany(
-        () => PresupuestoMensual,
-        (presupuestoMensual) => presupuestoMensual.creadoPor
-    )
-    presupuestoMensuals: PresupuestoMensual[];
-
-    @OneToMany(
         () => ProgramacionMensual,
         (programacionMensual) => programacionMensual.trabajador
     )
@@ -239,15 +203,6 @@ export class Trabajador {
         (renovacionContrato) => renovacionContrato.aprobadoPor
     )
     renovacionContratoes: RenovacionContrato[];
-
-    @OneToMany(
-        () => ReporteProgramado,
-        (reporteProgramado) => reporteProgramado.creadoPor
-    )
-    reporteProgramados: ReporteProgramado[];
-
-    @OneToMany(() => SaldoCaja, (saldoCaja) => saldoCaja.calculadoPor)
-    saldoCajas: SaldoCaja[];
 
     @OneToMany(
         () => SeguroTrabajador,

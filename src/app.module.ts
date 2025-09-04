@@ -19,8 +19,6 @@ import { TrabajadorModule } from './trabajador/trabajador.module';
 import { RolModule } from './rol/rol.module';
 import { UsuarioModule } from './usuario/usuario.module';
 import { AuthModule } from './auth/auth.module';
-
-// Configuracion
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { MatriculaAulaModule } from './matricula-aula/matricula-aula.module';
@@ -39,21 +37,13 @@ import { SeguroTrabajadorModule } from './seguro-trabajador/seguro-trabajador.mo
 import { PlanillaMensualModule } from './planilla-mensual/planilla-mensual.module';
 import { DetallePlanillaModule } from './detalle-planilla/detalle-planilla.module';
 import { CajaModule } from './caja/caja.module';
-import { CategoriaGastoModule } from './categoria-gasto/categoria-gasto.module';
-import { PresupuestoMensualModule } from './presupuesto-mensual/presupuesto-mensual.module';
-import { GastoOperativoModule } from './gasto-operativo/gasto-operativo.module';
-import { SaldoCajaModule } from './saldo-caja/saldo-caja.module';
 import { PensionEstudianteModule } from './pension-estudiante/pension-estudiante.module';
 import { TipoContratoModule } from './tipo-contrato/tipo-contrato.module';
 import { ContratoTrabajadorModule } from './contrato-trabajador/contrato-trabajador.module';
 import { HistorialContratoModule } from './historial-contrato/historial-contrato.module';
 import { RenovacionContratoModule } from './renovacion-contrato/renovacion-contrato.module';
-import { AuditoriaFinancieraModule } from './auditoria-financiera/auditoria-financiera.module';
-import { ReporteProgramadorModule } from './reporte-programador/reporte-programador.module';
-import { HistorialReporteModule } from './historial-reporte/historial-reporte.module';
 import { AnotacionesEstudianteModule } from './anotaciones-estudiante/anotaciones-estudiante.module';
 import { CajaSimpleModule } from './caja-simple/caja-simple.module';
-import { CategoriaSimpleModule } from './categoria-simple/categoria-simple.module';
 
 @Module({
   imports: [
@@ -104,21 +94,13 @@ import { CategoriaSimpleModule } from './categoria-simple/categoria-simple.modul
     PlanillaMensualModule,
     DetallePlanillaModule,
     CajaModule,
-    CategoriaGastoModule,
-    PresupuestoMensualModule,
-    GastoOperativoModule,
-    SaldoCajaModule,
     PensionEstudianteModule,
     TipoContratoModule,
     ContratoTrabajadorModule,
     HistorialContratoModule,
     RenovacionContratoModule,
-    AuditoriaFinancieraModule,
-    ReporteProgramadorModule,
-    HistorialReporteModule,
     AnotacionesEstudianteModule,
     CajaSimpleModule,
-    CategoriaSimpleModule,
   ],
   controllers: [AppController],
   providers: [AppService],
