@@ -4,11 +4,11 @@ import {
   IsOptional,
   IsEnum,
   IsInt,
-  IsDecimal,
   IsUUID,
   IsDateString,
   Min,
   Max,
+  IsNumber,
 } from 'class-validator';
 import { EstadoPago } from 'src/enums/estado-pago.enum';
 
@@ -29,27 +29,27 @@ export class CreateDetallePlanillaDto {
 
   @ApiProperty({
     description: 'Sueldo base del trabajador',
-    example: '2500.00',
+    example: 2500.0,
   })
-  @IsDecimal({}, { message: 'El sueldo base debe ser un número decimal' })
+  @IsNumber({}, { message: 'El sueldo base debe ser un número decimal' })
   sueldoBase: number;
 
   @ApiProperty({
     description: 'Bonificación familiar',
-    example: '150.00',
+    example: 150.0,
     required: false,
   })
   @IsOptional()
-  @IsDecimal({}, { message: 'La bonificación familiar debe ser un número' })
+  @IsNumber({}, { message: 'La bonificación familiar debe ser un número' })
   bonificacionFamiliar?: number;
 
   @ApiProperty({
     description: 'Asignación familiar',
-    example: '100.00',
+    example: 100.0,
     required: false,
   })
   @IsOptional()
-  @IsDecimal(
+  @IsNumber(
     {},
     { message: 'La asignación familiar debe ser un número decimal' },
   )
@@ -57,47 +57,47 @@ export class CreateDetallePlanillaDto {
 
   @ApiProperty({
     description: 'Otros ingresos',
-    example: '200.00',
+    example: 200.0,
     required: false,
   })
   @IsOptional()
-  @IsDecimal({}, { message: 'Otros ingresos debe ser un número decimal' })
+  @IsNumber({}, { message: 'Otros ingresos debe ser un número decimal' })
   otrosIngresos?: number;
 
   @ApiProperty({
     description: 'Descuento AFP',
-    example: '250.00',
+    example: 250.0,
     required: false,
   })
   @IsOptional()
-  @IsDecimal({}, { message: 'El descuento AFP debe ser un número decimal' })
+  @IsNumber({}, { message: 'El descuento AFP debe ser un número decimal' })
   descuentoAfp?: number;
 
   @ApiProperty({
     description: 'Descuento EsSalud',
-    example: '225.00',
+    example: 225.0,
     required: false,
   })
   @IsOptional()
-  @IsDecimal({}, { message: 'El descuento EsSalud debe ser un número decimal' })
+  @IsNumber({}, { message: 'El descuento EsSalud debe ser un número decimal' })
   descuentoEssalud?: number;
 
   @ApiProperty({
     description: 'Descuento ONP',
-    example: '325.00',
+    example: 325.0,
     required: false,
   })
   @IsOptional()
-  @IsDecimal({}, { message: 'El descuento ONP debe ser un número decimal' })
+  @IsNumber({}, { message: 'El descuento ONP debe ser un número decimal' })
   descuentoOnp?: number;
 
   @ApiProperty({
     description: 'Otros descuentos',
-    example: '50.00',
+    example: 50.0,
     required: false,
   })
   @IsOptional()
-  @IsDecimal({}, { message: 'Otros descuentos debe ser un número decimal' })
+  @IsNumber({}, { message: 'Otros descuentos debe ser un número decimal' })
   otrosDescuentos?: number;
 
   @ApiProperty({
