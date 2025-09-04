@@ -33,7 +33,7 @@ export class PlanillaMensualService {
     private readonly detallePlanillaService: DetallePlanillaService,
     private readonly trabajadorService: TrabajadorService,
     private readonly sueldoTrabajadorService: SueldoTrabajadorService,
-  ) { }
+  ) {}
 
   async create(createPlanillaMensualDto: CreatePlanillaMensualDto): Promise<{
     success: boolean;
@@ -55,7 +55,9 @@ export class PlanillaMensualService {
     }
 
     // Verificar que el trabajador generador existe
-    const trabajadorGenerador = await this.trabajadorService.findOne(createPlanillaMensualDto.generadoPor)
+    const trabajadorGenerador = await this.trabajadorService.findOne(
+      createPlanillaMensualDto.generadoPor,
+    );
 
     if (!trabajadorGenerador) {
       throw new NotFoundException('El trabajador generador no existe');
@@ -63,7 +65,9 @@ export class PlanillaMensualService {
 
     // Verificar trabajador aprobador si se proporciona
     if (createPlanillaMensualDto.aprobadoPor) {
-      const trabajadorAprobador = await this.trabajadorService.findOne(createPlanillaMensualDto.aprobadoPor)
+      const trabajadorAprobador = await this.trabajadorService.findOne(
+        createPlanillaMensualDto.aprobadoPor,
+      );
 
       if (!trabajadorAprobador) {
         throw new NotFoundException('El trabajador aprobador no existe');
@@ -79,9 +83,9 @@ export class PlanillaMensualService {
         createPlanillaMensualDto.estadoPlanilla || EstadoPlanilla.GENERADA,
       observaciones: createPlanillaMensualDto.observaciones,
       fechaGeneracion: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-      totalIngresos: '0.00',
-      totalDescuentos: '0.00',
-      totalNeto: '0.00',
+      totalIngresos: 0,
+      totalDescuentos: 0,
+      totalNeto: 0,
       creadoEn: new Date(),
       actualizadoEn: new Date(),
     });
@@ -147,9 +151,10 @@ export class PlanillaMensualService {
 
       for (const trabajador of trabajadores) {
         // Obtener el sueldo vigente del trabajador desde la tabla sueldo_trabajador
-        const sueldoData = await this.sueldoTrabajadorService.obtenerSueldoVigenteTrabajador(
-          trabajador.idTrabajador,
-        );
+        const sueldoData =
+          await this.sueldoTrabajadorService.obtenerSueldoVigenteTrabajador(
+            trabajador.idTrabajador,
+          );
 
         if (!sueldoData) {
           throw new BadRequestException(
@@ -226,10 +231,11 @@ export class PlanillaMensualService {
       }
 
       // 3. Verificar que el trabajador no esté ya en la planilla
-      const detalleExistente = await this.detallePlanillaService.findByPlanillaYTrabajador(
-        idPlanilla,
-        idTrabajador,
-      );
+      const detalleExistente =
+        await this.detallePlanillaService.findByPlanillaYTrabajador(
+          idPlanilla,
+          idTrabajador,
+        );
 
       if (detalleExistente) {
         throw new ConflictException(
@@ -238,7 +244,10 @@ export class PlanillaMensualService {
       }
 
       // 4. Obtener el sueldo vigente del trabajador
-      const sueldoData = await this.sueldoTrabajadorService.obtenerSueldoVigenteTrabajador(idTrabajador);
+      const sueldoData =
+        await this.sueldoTrabajadorService.obtenerSueldoVigenteTrabajador(
+          idTrabajador,
+        );
 
       if (!sueldoData) {
         throw new BadRequestException(
@@ -294,7 +303,9 @@ export class PlanillaMensualService {
     }
 
     // Verificar que el trabajador aprobador existe
-    const trabajadorAprobador = await this.trabajadorService.findOne(data.aprobadoPor);
+    const trabajadorAprobador = await this.trabajadorService.findOne(
+      data.aprobadoPor,
+    );
 
     if (!trabajadorAprobador) {
       throw new NotFoundException('El trabajador aprobador no existe');
@@ -341,7 +352,9 @@ export class PlanillaMensualService {
     }
 
     // Verificar que el trabajador pagador existe
-    const trabajadorPagador = await this.trabajadorService.findOne(data.pagadoPor);
+    const trabajadorPagador = await this.trabajadorService.findOne(
+      data.pagadoPor,
+    );
 
     if (!trabajadorPagador) {
       throw new NotFoundException('El trabajador pagador no existe');
@@ -364,7 +377,10 @@ export class PlanillaMensualService {
     });
 
     // Actualizar estado de pago en todos los detalles
-    await this.detallePlanillaService.actualizarEstadoPagoPlanilla(id, new Date(data.fechaPagoReal));
+    await this.detallePlanillaService.actualizarEstadoPagoPlanilla(
+      id,
+      new Date(data.fechaPagoReal),
+    );
 
     const planillaActualizada = await this.findOne(id);
 
@@ -480,14 +496,18 @@ export class PlanillaMensualService {
 
     // Verificar trabajadores si se actualizan
     if (updatePlanillaMensualDto.generadoPor) {
-      const trabajadorGenerador = await this.trabajadorService.findOne(updatePlanillaMensualDto.generadoPor)
+      const trabajadorGenerador = await this.trabajadorService.findOne(
+        updatePlanillaMensualDto.generadoPor,
+      );
       if (!trabajadorGenerador) {
         throw new NotFoundException('El trabajador generador no existe');
       }
     }
 
     if (updatePlanillaMensualDto.aprobadoPor) {
-      const trabajadorAprobador = await this.trabajadorService.findOne(updatePlanillaMensualDto.aprobadoPor)
+      const trabajadorAprobador = await this.trabajadorService.findOne(
+        updatePlanillaMensualDto.aprobadoPor,
+      );
       if (!trabajadorAprobador) {
         throw new NotFoundException('El trabajador aprobador no existe');
       }
@@ -582,12 +602,9 @@ export class PlanillaMensualService {
 
     const totales = await repository
       .createQueryBuilder('detalle')
-      .select('SUM(CAST(detalle.totalIngresos AS DECIMAL))', 'totalIngresos')
-      .addSelect(
-        'SUM(CAST(detalle.totalDescuentos AS DECIMAL))',
-        'totalDescuentos',
-      )
-      .addSelect('SUM(CAST(detalle.sueldoNeto AS DECIMAL))', 'totalNeto')
+      .select('SUM(detalle.totalIngresos)', 'totalIngresos')
+      .addSelect('SUM(detalle.totalDescuentos)', 'totalDescuentos')
+      .addSelect('SUM(detalle.sueldoNeto)', 'totalNeto')
       .where('detalle.idPlanillaMensual = :idPlanilla', { idPlanilla })
       .getRawOne();
 
@@ -596,9 +613,9 @@ export class PlanillaMensualService {
       : this.planillaMensualRepository;
 
     await planillaRepository.update(idPlanilla, {
-      totalIngresos: (totales.totalIngresos || 0).toString(),
-      totalDescuentos: (totales.totalDescuentos || 0).toString(),
-      totalNeto: (totales.totalNeto || 0).toString(),
+      totalIngresos: parseFloat(totales.totalIngresos) || 0,
+      totalDescuentos: parseFloat(totales.totalDescuentos) || 0,
+      totalNeto: parseFloat(totales.totalNeto) || 0,
       actualizadoEn: new Date(),
     });
   }
@@ -607,9 +624,9 @@ export class PlanillaMensualService {
     success: boolean;
     message: string;
     totales: {
-      totalIngresos: string;
-      totalDescuentos: string;
-      totalNeto: string;
+      totalIngresos: number;
+      totalDescuentos: number;
+      totalNeto: number;
     };
   }> {
     await this.recalcularTotalesPlanilla(idPlanilla);
@@ -620,9 +637,9 @@ export class PlanillaMensualService {
       success: true,
       message: 'Totales recalculados correctamente',
       totales: {
-        totalIngresos: planillaActualizada.totalIngresos || '0.00',
-        totalDescuentos: planillaActualizada.totalDescuentos || '0.00',
-        totalNeto: planillaActualizada.totalNeto || '0.00',
+        totalIngresos: planillaActualizada.totalIngresos || 0,
+        totalDescuentos: planillaActualizada.totalDescuentos || 0,
+        totalNeto: planillaActualizada.totalNeto || 0,
       },
     };
   }
