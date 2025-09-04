@@ -27,11 +27,6 @@ export class CreateContactoEmergenciaDto {
     @Length(1, 50)
     tipoContacto: string;
 
-    @ApiProperty({ example: 'Madre del estudiante', description: 'Relación del contacto con el estudiante' })
-    @IsString()
-    @Length(1, 100)
-    relacionEstudiante: string;
-
     @ApiProperty({ example: true, description: 'Indica si es el contacto principal', required: false })
     @IsOptional()
     @IsBoolean()
