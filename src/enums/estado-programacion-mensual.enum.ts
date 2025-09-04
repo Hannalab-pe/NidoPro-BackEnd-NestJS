@@ -1,0 +1,8 @@
+export enum EstadoProgramacionMensual {
+    PENDIENTE = 'PENDIENTE',
+    PRESENTADA = 'PRESENTADA',
+    REVISION = 'REVISION',
+    APROBADA = 'APROBADA',
+    RECHAZADA = 'RECHAZADA',
+    VENCIDA = 'VENCIDA'
+}

@@ -1,0 +1,8 @@
+export enum EstadoObservacionDocente {
+    ACTIVA = 'ACTIVA',
+    PENDIENTE_REVISION = 'PENDIENTE_REVISION',
+    APROBADO = 'APROBADO',
+    CALIFICADO = 'CALIFICADO',
+    SUBSANADA = 'SUBSANADA',
+    CERRADA = 'CERRADA'
+}

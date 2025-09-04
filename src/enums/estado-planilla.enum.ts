@@ -1,0 +1,7 @@
+export enum EstadoPlanilla {
+  GENERADA = 'GENERADA',
+  APROBADA = 'APROBADA',
+  PAGADA = 'PAGADA',
+  ANULADA = 'ANULADA',
+  EN_REVISION = 'EN_REVISION',
+}

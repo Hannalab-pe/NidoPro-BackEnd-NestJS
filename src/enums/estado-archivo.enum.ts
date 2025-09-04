@@ -1,0 +1,7 @@
+export enum EstadoArchivo {
+  ACTIVO = 'ACTIVO',
+  INACTIVO = 'INACTIVO',
+  PROCESANDO = 'PROCESANDO',
+  ERROR = 'ERROR',
+  ARCHIVADO = 'ARCHIVADO',
+}
