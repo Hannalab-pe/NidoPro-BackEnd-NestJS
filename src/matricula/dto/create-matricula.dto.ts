@@ -80,10 +80,6 @@ class CreateContactoEmergenciaDataDto {
     @Length(1, 50)
     tipoContacto: string;
 
-    @ApiProperty({ example: 'Madre', description: 'Relación con el estudiante' })
-    @IsString()
-    relacionEstudiante: string;
-
     @ApiProperty({ example: true, description: 'Es contacto principal?', required: false })
     @IsOptional()
     @IsBoolean()
