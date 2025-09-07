@@ -24,12 +24,17 @@ export class AuthService {
     const { usuario, contrasena } = loginDto;
 
     // Buscar usuario por nombre de usuario
+
     const user = await this.usuarioRepository.findOne({
-      where: { usuario, estaActivo: true },
+      where: { usuario },
     });
 
     if (!user) {
       throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    if (user.estaActivo === false) {
+      throw new UnauthorizedException('No está autorizado para ingresar');
     }
 
     // Verificar contraseña
