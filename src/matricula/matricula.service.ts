@@ -117,7 +117,6 @@ export class MatriculaService {
       }
 
       // Si aún no existe, crear nuevo estudiante
-      // Si aún no existe, crear nuevo estudiante
       if (!estudiante) {
         // Validar que se proporcionaron datos del estudiante
         if (!createMatriculaDto.estudianteData) {
@@ -201,6 +200,7 @@ export class MatriculaService {
           'idApoderado',           // Datos completos del apoderado
           'idEstudiante',          // Datos completos del estudiante
           'idEstudiante.idUsuario', // Usuario asociado al estudiante
+          'idEstudiante.contactosEmergencia', // Contactos de emergencia del estudiante
           'idGrado',               // Datos completos del grado
           'idGrado.idPension'      // Información de la pensión del grado
         ]
@@ -382,6 +382,7 @@ export class MatriculaService {
       .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
       .leftJoinAndSelect('matriculaAula.aula', 'aula')
       .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
+      .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
       .where('apoderado.esPrincipal = :principal', { principal: true })
       .orderBy('matricula.fechaIngreso', 'DESC')
       .getMany();
@@ -437,7 +438,11 @@ export class MatriculaService {
       .createQueryBuilder('matricula')
       .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
       .leftJoinAndSelect('matricula.idApoderado', 'apoderado')
-      .leftJoinAndSelect('matricula.idGrado', 'grado');
+      .leftJoinAndSelect('matricula.idGrado', 'grado')
+      .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
+      .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
+      .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
+      .leftJoinAndSelect('matriculaAula.aula', 'aula');
 
     // === FILTROS POR FECHAS ===
     if (fechaIngresoDesde) {
@@ -579,6 +584,10 @@ export class MatriculaService {
       .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
       .leftJoinAndSelect('matricula.idApoderado', 'apoderado')
       .leftJoinAndSelect('matricula.idGrado', 'grado')
+      .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
+      .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
+      .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
+      .leftJoinAndSelect('matriculaAula.aula', 'aula')
       .where('LOWER(estudiante.nombre) LIKE LOWER(:term)', { term: `%${term}%` })
       .orWhere('LOWER(estudiante.apellido) LIKE LOWER(:term)', { term: `%${term}%` })
       .orWhere('LOWER(apoderado.nombre) LIKE LOWER(:term)', { term: `%${term}%` })
