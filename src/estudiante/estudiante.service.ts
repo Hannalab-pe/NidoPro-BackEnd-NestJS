@@ -85,7 +85,7 @@ export class EstudianteService {
       // Cargar el estudiante completo con relaciones
       const estudianteCompleto = await this.estudianteRepository.findOne({
         where: { idEstudiante: savedEstudiante.idEstudiante },
-        relations: ['idRol', 'idUsuario']
+        relations: ['idRol', 'idUsuario', 'contactosEmergencia']
       });
 
       if (!estudianteCompleto) {
@@ -110,7 +110,7 @@ export class EstudianteService {
   async findByDocumento(dni: string): Promise<Estudiante> {
     const estudiante = await this.estudianteRepository.findOne({
       where: { nroDocumento: dni },
-      relations: ['idUsuario']
+      relations: ['idUsuario', 'contactosEmergencia']
     });
     if (!estudiante) {
       throw new NotFoundException(`Estudiante con DNI ${dni} no encontrado`);
@@ -120,7 +120,7 @@ export class EstudianteService {
 
   async findAll(): Promise<{ sucess: boolean; message: string; estudiantes: Estudiante[] }> {
     const estudiantes = await this.estudianteRepository.find({
-      relations: ['idUsuario']
+      relations: ['idUsuario', 'contactosEmergencia']
     });
     return {
       sucess: true,
@@ -131,8 +131,8 @@ export class EstudianteService {
 
   async findOne(id: string): Promise<Estudiante> {
     const estudiante = await this.estudianteRepository.findOne({
-      where: { idEstudiante: id }
-      , relations: ['idUsuario']
+      where: { idEstudiante: id },
+      relations: ['idUsuario', 'contactosEmergencia']
     });
     if (!estudiante) {
       throw new NotFoundException(`Estudiante con ID ${id} no encontrado`);
