@@ -6,7 +6,7 @@ import {
   Patch,
   Param,
   Delete,
-  Query,
+  Put,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { PlanillaMensualService } from './planilla-mensual.service';
@@ -14,7 +14,6 @@ import { CreatePlanillaMensualDto } from './dto/create-planilla-mensual.dto';
 import { UpdatePlanillaMensualDto } from './dto/update-planilla-mensual.dto';
 import {
   AprobarPlanillaMensualDto,
-  RegistrarPagoPlanillaMensualDto,
   GenerarPlanillaConTrabajadoresDto,
 } from './dto/operaciones-planilla.dto';
 import { EstadoPlanilla } from 'src/enums/estado-planilla.enum';
@@ -24,7 +23,7 @@ import { EstadoPlanilla } from 'src/enums/estado-planilla.enum';
 export class PlanillaMensualController {
   constructor(
     private readonly planillaMensualService: PlanillaMensualService,
-  ) {}
+  ) { }
 
   @Post()
   @ApiOperation({ summary: 'Crear nueva planilla mensual' })
@@ -33,8 +32,8 @@ export class PlanillaMensualController {
     status: 400,
     description: 'Error en los datos o planilla duplicada',
   })
-  create(@Body() createPlanillaMensualDto: CreatePlanillaMensualDto) {
-    return this.planillaMensualService.create(createPlanillaMensualDto);
+  async create(@Body() createPlanillaMensualDto: CreatePlanillaMensualDto) {
+    return await this.planillaMensualService.create(createPlanillaMensualDto);
   }
 
   @Post('generar-con-trabajadores')
@@ -49,33 +48,48 @@ export class PlanillaMensualController {
     status: 400,
     description: 'Error en los datos o trabajadores no válidos',
   })
-  generarConTrabajadores(@Body() data: GenerarPlanillaConTrabajadoresDto) {
-    return this.planillaMensualService.generarPlanillaConTrabajadores(data);
+  async generarConTrabajadores(@Body() data: GenerarPlanillaConTrabajadoresDto) {
+    return await this.planillaMensualService.generarPlanillaConTrabajadores(data);
+  }
+
+  @Patch('aprobar-masivo')
+  @ApiOperation({ summary: 'Aprobar múltiples planillas de forma masiva (optimizado para rendimiento)' })
+  @ApiResponse({ status: 200, description: 'Planillas procesadas masivamente con registro detallado' })
+  @ApiResponse({ status: 400, description: 'Error en validación de datos' })
+  @ApiResponse({ status: 404, description: 'Trabajador aprobador no encontrado' })
+  async aprobarMasivo(
+    @Body() data: {
+      idsPlanillas: string[];
+      aprobadoPor: string;
+      observaciones?: string;
+    },
+  ) {
+    return await this.planillaMensualService.aprobarPlanillasMasivas(data.idsPlanillas, {
+      aprobadoPor: data.aprobadoPor,
+      observaciones: data.observaciones,
+    });
   }
 
   @Patch(':id/aprobar')
-  @ApiOperation({ summary: 'Aprobar planilla mensual' })
-  @ApiResponse({ status: 200, description: 'Planilla aprobada correctamente' })
+  @ApiOperation({ summary: 'Aprobar planilla mensual (automáticamente pasa a PAGADA y registra en caja)' })
+  @ApiResponse({ status: 200, description: 'Planilla aprobada y pagada automáticamente con registro en caja' })
   @ApiResponse({
     status: 400,
     description: 'La planilla no puede ser aprobada en su estado actual',
   })
-  aprobar(@Param('id') id: string, @Body() data: AprobarPlanillaMensualDto) {
-    return this.planillaMensualService.aprobarPlanilla(id, data);
+  async aprobar(@Param('id') id: string, @Body() data: AprobarPlanillaMensualDto) {
+    return await this.planillaMensualService.aprobarPlanilla(id, data);
   }
 
-  @Patch(':id/registrar-pago')
-  @ApiOperation({ summary: 'Registrar pago de planilla mensual' })
-  @ApiResponse({ status: 200, description: 'Pago registrado correctamente' })
+  @Patch(':id/aprobar-sin-pago')
+  @ApiOperation({ summary: 'Aprobar planilla mensual (solo aprobar, sin pagar automáticamente)' })
+  @ApiResponse({ status: 200, description: 'Planilla aprobada correctamente sin registro de pago' })
   @ApiResponse({
     status: 400,
-    description: 'La planilla debe estar aprobada para registrar pago',
+    description: 'La planilla no puede ser aprobada en su estado actual',
   })
-  registrarPago(
-    @Param('id') id: string,
-    @Body() data: RegistrarPagoPlanillaMensualDto,
-  ) {
-    return this.planillaMensualService.registrarPago(id, data);
+  async aprobarSinPago(@Param('id') id: string, @Body() data: AprobarPlanillaMensualDto) {
+    return await this.planillaMensualService.aprobarPlanillaSinPago(id, data);
   }
 
   @Post(':id/recalcular-totales')
@@ -84,8 +98,8 @@ export class PlanillaMensualController {
     status: 200,
     description: 'Totales recalculados correctamente',
   })
-  recalcularTotales(@Param('id') id: string) {
-    return this.planillaMensualService.recalcularTotales(id);
+  async recalcularTotales(@Param('id') id: string) {
+    return await this.planillaMensualService.recalcularTotales(id);
   }
 
   @Get('periodo/:mes/:anio')
@@ -95,8 +109,8 @@ export class PlanillaMensualController {
     status: 404,
     description: 'Planilla no encontrada para el período especificado',
   })
-  findByPeriodo(@Param('mes') mes: string, @Param('anio') anio: string) {
-    return this.planillaMensualService.findByPeriodo(
+  async findByPeriodo(@Param('mes') mes: string, @Param('anio') anio: string) {
+    return await this.planillaMensualService.findByPeriodo(
       parseInt(mes),
       parseInt(anio),
     );
@@ -108,26 +122,23 @@ export class PlanillaMensualController {
     status: 200,
     description: 'Planillas obtenidas correctamente',
   })
-  findByEstado(@Param('estado') estado: EstadoPlanilla) {
-    return this.planillaMensualService.findByEstado(estado);
+  async findByEstado(@Param('estado') estado: EstadoPlanilla) {
+    return await this.planillaMensualService.findByEstado(estado);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todas las planillas mensuales' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista de planillas obtenida correctamente',
-  })
-  findAll() {
-    return this.planillaMensualService.findAll();
+  @ApiResponse({ status: 200, description: 'Lista de planillas obtenida correctamente' })
+  async findAll() {
+    return await this.planillaMensualService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener planilla por ID' })
   @ApiResponse({ status: 200, description: 'Planilla obtenida correctamente' })
   @ApiResponse({ status: 404, description: 'Planilla no encontrada' })
-  findOne(@Param('id') id: string) {
-    return this.planillaMensualService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.planillaMensualService.findOne(id);
   }
 
   @Patch(':id')
@@ -140,11 +151,11 @@ export class PlanillaMensualController {
     status: 400,
     description: 'Solo se pueden editar planillas GENERADAS o EN_REVISION',
   })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updatePlanillaMensualDto: UpdatePlanillaMensualDto,
   ) {
-    return this.planillaMensualService.update(id, updatePlanillaMensualDto);
+    return await this.planillaMensualService.update(id, updatePlanillaMensualDto);
   }
 
   @Delete(':id')
@@ -154,7 +165,18 @@ export class PlanillaMensualController {
     status: 400,
     description: 'Solo se pueden eliminar planillas GENERADAS',
   })
-  remove(@Param('id') id: string) {
-    return this.planillaMensualService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.planillaMensualService.remove(id);
   }
+
+  // ==================== ENDPOINTS DE CONSULTA Y REPORTES ====================
+
+  @Get(':id/trabajadores-pendientes')
+  @ApiOperation({ summary: 'Obtener trabajadores pendientes de pago en una planilla' })
+  @ApiResponse({ status: 200, description: 'Lista de trabajadores pendientes obtenida correctamente' })
+  @ApiResponse({ status: 404, description: 'Planilla no encontrada' })
+  async obtenerTrabajadoresPendientesPago(@Param('id') id: string) {
+    return await this.planillaMensualService.obtenerTrabajadoresPendientesPago(id);
+  }
+
 }

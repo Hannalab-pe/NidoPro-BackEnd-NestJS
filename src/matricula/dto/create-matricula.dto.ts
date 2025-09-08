@@ -261,6 +261,16 @@ export class CreateMatriculaDto {
     @IsOptional()
     @IsString()
     motivoPreferencia?: string;
+
+    @ApiProperty({
+        description: 'ID del trabajador que registra la matrícula (requerido para registro en caja simple)',
+        example: 'f1a2b3c4-d5e6-7890-abcd-ef1234567890',
+        format: 'uuid',
+        required: false
+    })
+    @IsOptional()
+    @IsUUID()
+    registradoPor?: string;
 }
 
 

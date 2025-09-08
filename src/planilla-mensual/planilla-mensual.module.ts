@@ -9,6 +9,7 @@ import { SueldoTrabajador } from 'src/sueldo-trabajador/entities/sueldo-trabajad
 import { DetallePlanillaModule } from 'src/detalle-planilla/detalle-planilla.module';
 import { SueldoTrabajadorModule } from 'src/sueldo-trabajador/sueldo-trabajador.module';
 import { TrabajadorModule } from 'src/trabajador/trabajador.module';
+import { CajaSimpleModule } from 'src/caja-simple/caja-simple.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { TrabajadorModule } from 'src/trabajador/trabajador.module';
     DetallePlanillaModule,
     SueldoTrabajadorModule,
     TrabajadorModule,
+    CajaSimpleModule,
   ],
   controllers: [PlanillaMensualController],
   providers: [PlanillaMensualService],

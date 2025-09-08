@@ -122,11 +122,13 @@ export class CrearIngresoPorMatriculaDto {
 
 export class CrearEgresoPorPlanillaDto {
     @ApiProperty({
-        description: 'ID del trabajador que recibe el pago',
-        example: '550e8400-e29b-41d4-a716-446655440003'
+        description: 'ID del trabajador que recibe el pago (opcional para planillas completas)',
+        example: '550e8400-e29b-41d4-a716-446655440003',
+        required: false
     })
+    @IsOptional()
     @IsUUID()
-    idTrabajadorBeneficiario: string;
+    idTrabajadorBeneficiario?: string;
 
     @ApiProperty({
         description: 'Monto del sueldo a pagar',
@@ -184,4 +186,155 @@ export class CrearEgresoPorPlanillaDto {
     @IsString()
     @MaxLength(50)
     numeroComprobante?: string;
+}
+
+// =================== NUEVOS DTOs PARA INTEGRACIÓN CON PLANILLAS ===================
+
+export class RegistrarPagoPlanillaCompletaDto {
+    @ApiProperty({
+        description: 'ID de la planilla mensual a pagar',
+        example: '550e8400-e29b-41d4-a716-446655440000'
+    })
+    @IsUUID()
+    idPlanillaMensual: string;
+
+    @ApiProperty({
+        description: 'Método de pago utilizado',
+        maxLength: 50,
+        example: 'TRANSFERENCIA_BANCARIA'
+    })
+    @IsString()
+    @MaxLength(50)
+    metodoPago: string;
+
+    @ApiProperty({
+        description: 'Número de comprobante de pago',
+        maxLength: 50,
+        required: false,
+        example: 'PLANILLA-SEP-2025-001'
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(50)
+    numeroComprobante?: string;
+
+    @ApiProperty({
+        description: 'Observaciones sobre el pago',
+        maxLength: 500,
+        required: false,
+        example: 'Pago de planilla completa mes de septiembre'
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
+    observaciones?: string;
+
+    @ApiProperty({
+        description: 'ID del trabajador que registra el pago',
+        example: '550e8400-e29b-41d4-a716-446655440004'
+    })
+    @IsUUID()
+    registradoPor: string;
+
+    @ApiProperty({
+        description: 'Indica si el pago se registra por trabajador individual (true) o como un solo movimiento total (false)',
+        example: false
+    })
+    @IsOptional()
+    registroPorTrabajador?: boolean = false;
+}
+
+export class RegistrarPagoTrabajadorPlanillaDto {
+    @ApiProperty({
+        description: 'ID del detalle de planilla del trabajador',
+        example: '550e8400-e29b-41d4-a716-446655440000'
+    })
+    @IsUUID()
+    idDetallePlanilla: string;
+
+    @ApiProperty({
+        description: 'Método de pago utilizado',
+        maxLength: 50,
+        example: 'TRANSFERENCIA_BANCARIA'
+    })
+    @IsString()
+    @MaxLength(50)
+    metodoPago: string;
+
+    @ApiProperty({
+        description: 'Número de comprobante de pago',
+        maxLength: 50,
+        required: false,
+        example: 'PAGO-TRAB-001234'
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(50)
+    numeroComprobante?: string;
+
+    @ApiProperty({
+        description: 'Observaciones sobre el pago',
+        maxLength: 500,
+        required: false,
+        example: 'Pago individual de sueldo'
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
+    observaciones?: string;
+
+    @ApiProperty({
+        description: 'ID del trabajador que registra el pago',
+        example: '550e8400-e29b-41d4-a716-446655440004'
+    })
+    @IsUUID()
+    registradoPor: string;
+}
+
+export class RegistrarPagoMasivoPlanillaDto {
+    @ApiProperty({
+        description: 'Lista de IDs de detalles de planilla para pago masivo',
+        type: [String],
+        example: ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001']
+    })
+    @IsUUID(4, { each: true })
+    idsDetallePlanilla: string[];
+
+    @ApiProperty({
+        description: 'Método de pago utilizado',
+        maxLength: 50,
+        example: 'TRANSFERENCIA_BANCARIA'
+    })
+    @IsString()
+    @MaxLength(50)
+    metodoPago: string;
+
+    @ApiProperty({
+        description: 'Número de comprobante base para los pagos',
+        maxLength: 50,
+        required: false,
+        example: 'LOTE-PLANILLA-SEP-2025'
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(50)
+    numeroComprobanteBase?: string;
+
+    @ApiProperty({
+        description: 'Observaciones generales para los pagos',
+        maxLength: 500,
+        required: false,
+        example: 'Pago masivo planilla septiembre 2025'
+    })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
+    observaciones?: string;
+
+    @ApiProperty({
+        description: 'ID del trabajador que registra el pago',
+        example: '550e8400-e29b-41d4-a716-446655440004'
+    })
+    @IsUUID()
+    registradoPor: string;
 }

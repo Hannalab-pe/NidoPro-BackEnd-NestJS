@@ -10,6 +10,8 @@ import { SearchMatriculaDto } from './dto/search-matricula.dto';
 import { MatriculaAula } from 'src/matricula-aula/entities/matricula-aula.entity';
 import { AulaService } from 'src/aula/aula.service';
 import { ContactoEmergencia } from 'src/contacto-emergencia/entities/contacto-emergencia.entity';
+import { CajaSimpleService } from 'src/caja-simple/caja-simple.service';
+import { CrearIngresoPorMatriculaDto } from 'src/caja-simple/dto/crear-movimientos.dto';
 
 @Injectable()
 export class MatriculaService {
@@ -21,6 +23,7 @@ export class MatriculaService {
     private apoderadoService: ApoderadoService,
     private estudianteService: EstudianteService,
     private gradoService: GradoService,
+    private cajaSimpleService: CajaSimpleService,
     private dataSource: DataSource
   ) { }
 
@@ -288,6 +291,38 @@ export class MatriculaService {
         }
       } catch (error) {
         throw new Error("Error al asignar aula a la matrícula", error);
+      }
+
+      // === REGISTRAR AUTOMÁTICAMENTE EN CAJA SIMPLE ===
+      try {
+        // Solo registrar si hay un costo de matrícula y método de pago
+        if (matriculaCompleta.costoMatricula && parseFloat(matriculaCompleta.costoMatricula) > 0) {
+          console.log('💰 Registrando matrícula en caja simple...');
+
+          // Preparar datos para el registro en caja simple
+          const registroCajaDto: CrearIngresoPorMatriculaDto = {
+            idEstudiante: matriculaCompleta.idEstudiante.idEstudiante,
+            monto: parseFloat(matriculaCompleta.costoMatricula),
+            metodoPago: matriculaCompleta.metodoPago || 'EFECTIVO',
+            numeroComprobante: matriculaCompleta.voucherImg ?
+              `MAT-${matriculaCompleta.idMatricula.substring(0, 8)}` : undefined,
+            registradoPor: createMatriculaDto.registradoPor || '00000000-0000-0000-0000-000000000000', // ID por defecto si no se proporciona
+            periodoEscolar: new Date().getFullYear().toString()
+          };
+
+          // Registrar el movimiento en caja simple
+          const movimientoCaja = await this.cajaSimpleService.crearIngresoPorMatricula(registroCajaDto);
+
+          console.log(`✅ Matrícula registrada en caja simple con ID: ${movimientoCaja.idMovimiento}`);
+          console.log(`📊 Detalle: ${matriculaCompleta.idEstudiante.nombre} ${matriculaCompleta.idEstudiante.apellido} - S/ ${matriculaCompleta.costoMatricula}`);
+        } else {
+          console.log('ℹ️ No se registró en caja simple: matrícula sin costo o costo = 0');
+        }
+      } catch (error) {
+        console.error('❌ Error al registrar matrícula en caja simple:', error);
+        // No lanzamos el error para no fallar toda la transacción de matrícula
+        // Solo logueamos el error para investigación posterior
+        console.error('⚠️ La matrícula se completó exitosamente pero no se pudo registrar en caja simple');
       }
 
       return matriculaCompleta;
@@ -638,6 +673,102 @@ export class MatriculaService {
         'pension.monto'
       ])
       .getMany();
+  }
+
+  /**
+   * Registrar matrícula existente en caja simple (para matrículas ya creadas)
+   */
+  async registrarMatriculaEnCajaSimple(
+    idMatricula: string,
+    registradoPor: string,
+    numeroComprobante?: string
+  ): Promise<any> {
+    try {
+      // Buscar la matrícula completa
+      const matricula = await this.findOne(idMatricula);
+
+      if (!matricula) {
+        throw new Error('Matrícula no encontrada');
+      }
+
+      // Verificar que tiene costo
+      if (!matricula.costoMatricula || parseFloat(matricula.costoMatricula) <= 0) {
+        throw new Error('La matrícula no tiene un costo válido para registrar en caja simple');
+      }
+
+      // Preparar datos para el registro en caja simple
+      const registroCajaDto: CrearIngresoPorMatriculaDto = {
+        idEstudiante: matricula.idEstudiante.idEstudiante,
+        monto: parseFloat(matricula.costoMatricula),
+        metodoPago: matricula.metodoPago || 'EFECTIVO',
+        numeroComprobante: numeroComprobante ||
+          (matricula.voucherImg ? `MAT-${matricula.idMatricula.substring(0, 8)}` : undefined),
+        registradoPor: registradoPor,
+        periodoEscolar: new Date(matricula.fechaIngreso).getFullYear().toString()
+      };
+
+      // Registrar el movimiento en caja simple
+      const movimientoCaja = await this.cajaSimpleService.crearIngresoPorMatricula(registroCajaDto);
+
+      return {
+        success: true,
+        message: 'Matrícula registrada exitosamente en caja simple',
+        matricula: {
+          id: matricula.idMatricula,
+          estudiante: `${matricula.idEstudiante.nombre} ${matricula.idEstudiante.apellido}`,
+          costo: matricula.costoMatricula,
+          fecha: matricula.fechaIngreso
+        },
+        movimientoCaja: {
+          id: movimientoCaja.idMovimiento,
+          numeroTransaccion: movimientoCaja.numeroTransaccion,
+          fecha: movimientoCaja.fecha,
+          monto: movimientoCaja.monto
+        }
+      };
+    } catch (error) {
+      console.error('Error al registrar matrícula en caja simple:', error);
+      throw new Error(`No se pudo registrar la matrícula en caja simple: ${error.message}`);
+    }
+  }
+
+  /**
+   * Obtener matrículas que no han sido registradas en caja simple
+   */
+  async getMatriculasSinRegistroEnCaja(): Promise<any[]> {
+    // Esta consulta busca matrículas que tienen costo pero no tienen registro en caja simple
+    const matriculas = await this.matriculaRepository
+      .createQueryBuilder('matricula')
+      .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
+      .leftJoinAndSelect('matricula.idGrado', 'grado')
+      .leftJoin('caja_simple', 'caja',
+        'caja.id_estudiante = matricula.id_estudiante AND caja.categoria = :categoria',
+        { categoria: 'MATRICULA' })
+      .where('matricula.costoMatricula > :costo', { costo: 0 })
+      .andWhere('caja.id_movimiento IS NULL') // No existe registro en caja simple
+      .select([
+        'matricula.idMatricula',
+        'matricula.costoMatricula',
+        'matricula.fechaIngreso',
+        'matricula.metodoPago',
+        'matricula.voucherImg',
+        'estudiante.idEstudiante',
+        'estudiante.nombre',
+        'estudiante.apellido',
+        'grado.grado'
+      ])
+      .orderBy('matricula.fechaIngreso', 'DESC')
+      .getMany();
+
+    return matriculas.map(m => ({
+      idMatricula: m.idMatricula,
+      estudiante: `${m.idEstudiante.nombre} ${m.idEstudiante.apellido}`,
+      grado: m.idGrado.grado,
+      costo: m.costoMatricula,
+      fecha: m.fechaIngreso,
+      metodoPago: m.metodoPago,
+      tieneVoucher: !!m.voucherImg
+    }));
   }
 
 }

@@ -3,6 +3,7 @@ import { MatriculaService } from './matricula.service';
 import { CreateMatriculaDto } from './dto/create-matricula.dto';
 import { ApiOperation, ApiQuery, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { SearchMatriculaDto } from './dto/search-matricula.dto';
+import { RegistrarMatriculaEnCajaSimpleDto } from './dto/registrar-caja-simple.dto';
 
 @Controller('matricula')
 export class MatriculaController {
@@ -11,9 +12,6 @@ export class MatriculaController {
   @Post()
   @ApiOperation({ summary: 'Registrar una nueva matrícula para un estudiante' })
   async create(@Body() createMatriculaDto: CreateMatriculaDto) {
-    console.log('🔥 CONTROLLER - Datos recibidos:', JSON.stringify(createMatriculaDto, null, 2));
-    console.log('🔥 CONTROLLER - estudianteData:', createMatriculaDto.estudianteData);
-    console.log('🔥 CONTROLLER - contactosEmergencia:', createMatriculaDto.estudianteData?.contactosEmergencia);
 
     const data = await this.matriculaService.create(createMatriculaDto);
     return {
@@ -167,6 +165,59 @@ export class MatriculaController {
       message: "Matrículas por rango de fechas encontradas",
       info: result
     };
+  }
+
+  @Get('caja-simple/pendientes')
+  @ApiOperation({
+    summary: 'Obtener matrículas sin registro en caja simple',
+    description: 'Lista matrículas que tienen costo pero no han sido registradas en caja simple'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de matrículas pendientes de registro en caja simple',
+  })
+  async getMatriculasSinRegistroEnCaja() {
+    const data = await this.matriculaService.getMatriculasSinRegistroEnCaja();
+    return {
+      success: true,
+      message: "Matrículas pendientes de registro en caja simple",
+      count: data.length,
+      info: { data }
+    };
+  }
+
+  @Post('caja-simple/registrar/:id')
+  @ApiOperation({
+    summary: 'Registrar matrícula existente en caja simple',
+    description: 'Registra una matrícula ya existente en el sistema de caja simple'
+  })
+  @ApiParam({ name: 'id', description: 'UUID de la matrícula', example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
+  @ApiResponse({
+    status: 200,
+    description: 'Matrícula registrada exitosamente en caja simple',
+  })
+  async registrarMatriculaEnCajaSimple(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: RegistrarMatriculaEnCajaSimpleDto
+  ) {
+    try {
+      const result = await this.matriculaService.registrarMatriculaEnCajaSimple(
+        id,
+        body.registradoPor,
+        body.numeroComprobante
+      );
+      return {
+        success: true,
+        message: result.message,
+        info: result
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        info: null
+      };
+    }
   }
 
   // ===== RUTAS GENÉRICAS AL FINAL =====

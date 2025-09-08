@@ -154,14 +154,6 @@ export class CajaSimpleController {
         return await this.cajaSimpleService.crearIngresoPorMatricula(data);
     }
 
-    @Post('planilla')
-    @ApiOperation({ summary: 'Registrar pago de planilla',  description: 'Crea un egreso específico por pago de planilla/sueldo a trabajador'})
-    @ApiResponse({ status: 201, description: 'Pago de planilla registrado exitosamente'})
-    @ApiResponse({ status: 400, description: 'Datos inválidos en la solicitud'})
-    async crearEgresoPorPlanilla(@Body() data: CrearEgresoPorPlanillaDto) {
-        return await this.cajaSimpleService.crearEgresoPorPlanilla(data);
-    }
-
     @Get(':id')
     @ApiOperation({summary: 'Obtener un movimiento específico',description: 'Obtiene los detalles completos de un movimiento de caja por su ID' })
     @ApiParam({ name: 'id', description: 'ID del movimiento de caja' })

@@ -8,6 +8,7 @@ import { ApoderadoModule } from 'src/apoderado/apoderado.module';
 import { GradoModule } from 'src/grado/grado.module';
 import { MatriculaAulaModule } from 'src/matricula-aula/matricula-aula.module';
 import { AulaModule } from 'src/aula/aula.module';
+import { CajaSimpleModule } from 'src/caja-simple/caja-simple.module';
 
 @Module({
   imports: [
@@ -16,7 +17,8 @@ import { AulaModule } from 'src/aula/aula.module';
     ApoderadoModule,
     GradoModule,
     forwardRef(() => MatriculaAulaModule),
-    AulaModule
+    AulaModule,
+    CajaSimpleModule
   ],
   controllers: [MatriculaController],
   providers: [MatriculaService],

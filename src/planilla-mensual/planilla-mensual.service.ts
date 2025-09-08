@@ -21,6 +21,8 @@ import { EstadoPago } from 'src/enums/estado-pago.enum';
 import { DetallePlanillaService } from 'src/detalle-planilla/detalle-planilla.service';
 import { SueldoTrabajadorService } from 'src/sueldo-trabajador/sueldo-trabajador.service';
 import { TrabajadorService } from 'src/trabajador/trabajador.service';
+import { CajaSimpleService } from 'src/caja-simple/caja-simple.service';
+import { CajaSimple } from 'src/caja-simple/entities/caja-simple.entity';
 
 @Injectable()
 export class PlanillaMensualService {
@@ -33,7 +35,8 @@ export class PlanillaMensualService {
     private readonly detallePlanillaService: DetallePlanillaService,
     private readonly trabajadorService: TrabajadorService,
     private readonly sueldoTrabajadorService: SueldoTrabajadorService,
-  ) {}
+    private readonly cajaSimpleService: CajaSimpleService,
+  ) { }
 
   async create(createPlanillaMensualDto: CreatePlanillaMensualDto): Promise<{
     success: boolean;
@@ -290,6 +293,280 @@ export class PlanillaMensualService {
     success: boolean;
     message: string;
     planilla: PlanillaMensual;
+    registroCaja?: any;
+  }> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const planilla = await this.findOne(id);
+
+      if (
+        planilla.estadoPlanilla !== EstadoPlanilla.GENERADA &&
+        planilla.estadoPlanilla !== EstadoPlanilla.EN_REVISION
+      ) {
+        throw new BadRequestException(
+          'Solo se pueden aprobar planillas en estado GENERADA o EN_REVISION',
+        );
+      }
+
+      // Verificar que el trabajador aprobador existe
+      const trabajadorAprobador = await this.trabajadorService.findOne(
+        data.aprobadoPor,
+      );
+
+      if (!trabajadorAprobador) {
+        throw new NotFoundException('El trabajador aprobador no existe');
+      }
+
+      // Actualizar observaciones si se proporcionan
+      let observacionesActualizadas = planilla.observaciones || '';
+      if (data.observaciones) {
+        observacionesActualizadas += observacionesActualizadas
+          ? ` | Aprobación: ${data.observaciones}`
+          : `Aprobación: ${data.observaciones}`;
+      }
+
+      // 1. CAMBIO: Actualizar planilla directamente a PAGADA y registrar fecha de pago
+      const fechaAprobacion = new Date().toISOString().split('T')[0];
+
+      await queryRunner.manager.update(PlanillaMensual, id, {
+        estadoPlanilla: EstadoPlanilla.PAGADA, // 🔥 CAMBIO: Directo a PAGADA
+        fechaPagoReal: fechaAprobacion, // 🔥 NUEVO: Registrar fecha de pago real
+        aprobadoPor: { idTrabajador: data.aprobadoPor } as Trabajador,
+        pagadoPor: { idTrabajador: data.aprobadoPor } as Trabajador, // 🔥 NUEVO: Mismo aprobador es el pagador
+        observaciones: observacionesActualizadas + ` | Aprobado y pagado automáticamente`,
+        actualizadoEn: new Date(),
+      });
+
+      // 2. NUEVO: Actualizar todos los detalles a PAGADO
+      await queryRunner.manager.update(
+        DetallePlanilla,
+        { idPlanillaMensual: id },
+        {
+          estadoPago: EstadoPago.PAGADO,
+          fechaPago: fechaAprobacion,
+          actualizadoEn: new Date(),
+        },
+      );
+
+      // 3. NUEVO: Registrar egresos en caja por cada trabajador
+      const detalles = await queryRunner.manager.find(DetallePlanilla, {
+        where: { idPlanillaMensual: id },
+        relations: ['idTrabajador2'],
+      });
+
+      const registrosCaja: CajaSimple[] = [];
+      for (const detalle of detalles) {
+        const registroCaja = await this.cajaSimpleService.crearEgresoPorPlanilla({
+          mes: planilla.mes,
+          anio: planilla.anio,
+          monto: detalle.sueldoNeto,
+          idTrabajadorBeneficiario: detalle.idTrabajador,
+          registradoPor: data.aprobadoPor,
+          conceptoDetalle: `Sueldo ${detalle.idTrabajador2.nombre} ${detalle.idTrabajador2.apellido}`,
+          numeroComprobante: `PLN-${planilla.mes.toString().padStart(2, '0')}-${planilla.anio}-${detalle.idTrabajador.slice(-6).toUpperCase()}`,
+        });
+        registrosCaja.push(registroCaja);
+      }
+
+      await queryRunner.commitTransaction();
+
+      const planillaActualizada = await this.findOne(id);
+
+      return {
+        success: true,
+        message: `Planilla aprobada y pagada automáticamente. Se registraron ${registrosCaja.length} egresos en caja por un total de S/.${planilla.totalNeto}`,
+        planilla: planillaActualizada,
+        registroCaja: {
+          totalEgresos: registrosCaja.length,
+          montoTotal: planilla.totalNeto,
+          detalles: registrosCaja.map(r => ({
+            idMovimiento: r.idMovimiento,
+            concepto: r.concepto,
+            monto: r.monto,
+            trabajador: r.descripcion,
+          })),
+        },
+      };
+
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /**
+   * NUEVO: Aprobación masiva de múltiples planillas (optimizado para rendimiento)
+   */
+  async aprobarPlanillasMasivas(
+    idsPlanillas: string[],
+    data: {
+      aprobadoPor: string;
+      observaciones?: string;
+    },
+  ): Promise<{
+    success: boolean;
+    message: string;
+    resultados: {
+      planillasAprobadas: number;
+      totalEgresos: number;
+      montoTotalPagado: number;
+      planillasConError: Array<{
+        idPlanilla: string;
+        error: string;
+      }>;
+      detallesPorPlanilla: Array<{
+        idPlanilla: string;
+        mes: number;
+        anio: number;
+        trabajadoresPagados: number;
+        montoPagado: number;
+        registrosCaja: string[];
+      }>;
+    };
+  }> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Validar trabajador aprobador
+      const trabajadorAprobador = await this.trabajadorService.findOne(data.aprobadoPor);
+      if (!trabajadorAprobador) {
+        throw new NotFoundException('El trabajador aprobador no existe');
+      }
+
+      // 2. Obtener todas las planillas en una sola consulta
+      const planillas = await queryRunner.manager.find(PlanillaMensual, {
+        where: { idPlanillaMensual: { $in: idsPlanillas } as any },
+        relations: ['detallePlanillas', 'detallePlanillas.idTrabajador2'],
+      });
+
+      const resultados = {
+        planillasAprobadas: 0,
+        totalEgresos: 0,
+        montoTotalPagado: 0,
+        planillasConError: [] as Array<{ idPlanilla: string; error: string }>,
+        detallesPorPlanilla: [] as Array<{
+          idPlanilla: string;
+          mes: number;
+          anio: number;
+          trabajadoresPagados: number;
+          montoPagado: number;
+          registrosCaja: string[];
+        }>,
+      };
+
+      const fechaAprobacion = new Date().toISOString().split('T')[0];
+
+      // 3. Procesar cada planilla (optimizado con Promise.allSettled para manejar errores individuales)
+      const promesasProcesamiento = planillas.map(async (planilla) => {
+        try {
+          // Validar estado
+          if (
+            planilla.estadoPlanilla !== EstadoPlanilla.GENERADA &&
+            planilla.estadoPlanilla !== EstadoPlanilla.EN_REVISION
+          ) {
+            throw new Error(`Planilla ${planilla.mes}/${planilla.anio} no puede ser aprobada en estado ${planilla.estadoPlanilla}`);
+          }
+
+          // Actualizar planilla
+          const observacionesActualizadas = (planilla.observaciones || '') +
+            (data.observaciones ? ` | Aprobación masiva: ${data.observaciones}` : ' | Aprobación masiva automática');
+
+          await queryRunner.manager.update(PlanillaMensual, planilla.idPlanillaMensual, {
+            estadoPlanilla: EstadoPlanilla.PAGADA,
+            fechaPagoReal: fechaAprobacion,
+            aprobadoPor: { idTrabajador: data.aprobadoPor } as Trabajador,
+            pagadoPor: { idTrabajador: data.aprobadoPor } as Trabajador,
+            observaciones: observacionesActualizadas,
+            actualizadoEn: new Date(),
+          });
+
+          // Actualizar detalles en lote
+          await queryRunner.manager.update(
+            DetallePlanilla,
+            { idPlanillaMensual: planilla.idPlanillaMensual },
+            {
+              estadoPago: EstadoPago.PAGADO,
+              fechaPago: fechaAprobacion,
+              actualizadoEn: new Date(),
+            },
+          );
+
+          // Crear registros de caja en lote (optimizado)
+          const registrosCaja: string[] = [];
+          const promesasCaja = planilla.detallePlanillas.map(async (detalle) => {
+            const registroCaja = await this.cajaSimpleService.crearEgresoPorPlanilla({
+              mes: planilla.mes,
+              anio: planilla.anio,
+              monto: detalle.sueldoNeto,
+              idTrabajadorBeneficiario: detalle.idTrabajador,
+              registradoPor: data.aprobadoPor,
+              conceptoDetalle: `Sueldo ${detalle.idTrabajador2.nombre} ${detalle.idTrabajador2.apellido}`,
+              numeroComprobante: `PLN-${planilla.mes.toString().padStart(2, '0')}-${planilla.anio}-${detalle.idTrabajador.slice(-6).toUpperCase()}`,
+            });
+            return registroCaja.idMovimiento;
+          });
+
+          const idsMovimientosCaja = await Promise.all(promesasCaja);
+          registrosCaja.push(...idsMovimientosCaja);
+
+          // Actualizar contadores
+          resultados.planillasAprobadas++;
+          resultados.totalEgresos += planilla.detallePlanillas.length;
+          resultados.montoTotalPagado += planilla.totalNeto || 0;
+
+          // Agregar detalle
+          resultados.detallesPorPlanilla.push({
+            idPlanilla: planilla.idPlanillaMensual,
+            mes: planilla.mes,
+            anio: planilla.anio,
+            trabajadoresPagados: planilla.detallePlanillas.length,
+            montoPagado: planilla.totalNeto || 0,
+            registrosCaja: idsMovimientosCaja,
+          });
+
+          return { success: true, planilla: planilla.idPlanillaMensual };
+
+        } catch (error) {
+          resultados.planillasConError.push({
+            idPlanilla: planilla.idPlanillaMensual,
+            error: error.message,
+          });
+          return { success: false, planilla: planilla.idPlanillaMensual, error: error.message };
+        }
+      });
+
+      // 4. Ejecutar todas las promesas y recoger resultados
+      await Promise.allSettled(promesasProcesamiento);
+
+      await queryRunner.commitTransaction();
+
+      return {
+        success: true,
+        message: `Procesamiento masivo completado: ${resultados.planillasAprobadas} planillas aprobadas y pagadas, ${resultados.planillasConError.length} con errores`,
+        resultados,
+      };
+
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+  async aprobarPlanillaSinPago(
+    id: string,
+    data: AprobarPlanillaMensualDto,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    planilla: PlanillaMensual;
   }> {
     const planilla = await this.findOne(id);
 
@@ -330,63 +607,7 @@ export class PlanillaMensualService {
 
     return {
       success: true,
-      message: 'Planilla aprobada correctamente',
-      planilla: planillaActualizada,
-    };
-  }
-
-  async registrarPago(
-    id: string,
-    data: RegistrarPagoPlanillaMensualDto,
-  ): Promise<{
-    success: boolean;
-    message: string;
-    planilla: PlanillaMensual;
-  }> {
-    const planilla = await this.findOne(id);
-
-    if (planilla.estadoPlanilla !== EstadoPlanilla.APROBADA) {
-      throw new BadRequestException(
-        'Solo se pueden registrar pagos en planillas APROBADAS',
-      );
-    }
-
-    // Verificar que el trabajador pagador existe
-    const trabajadorPagador = await this.trabajadorService.findOne(
-      data.pagadoPor,
-    );
-
-    if (!trabajadorPagador) {
-      throw new NotFoundException('El trabajador pagador no existe');
-    }
-
-    // Actualizar observaciones
-    let observacionesActualizadas = planilla.observaciones || '';
-    if (data.observaciones) {
-      observacionesActualizadas += observacionesActualizadas
-        ? ` | Pago: ${data.observaciones}`
-        : `Pago: ${data.observaciones}`;
-    }
-
-    await this.planillaMensualRepository.update(id, {
-      estadoPlanilla: EstadoPlanilla.PAGADA,
-      fechaPagoReal: data.fechaPagoReal,
-      pagadoPor: { idTrabajador: data.pagadoPor } as Trabajador,
-      observaciones: observacionesActualizadas,
-      actualizadoEn: new Date(),
-    });
-
-    // Actualizar estado de pago en todos los detalles
-    await this.detallePlanillaService.actualizarEstadoPagoPlanilla(
-      id,
-      new Date(data.fechaPagoReal),
-    );
-
-    const planillaActualizada = await this.findOne(id);
-
-    return {
-      success: true,
-      message: 'Pago registrado correctamente',
+      message: 'Planilla aprobada correctamente (sin registro de pago)',
       planilla: planillaActualizada,
     };
   }
@@ -643,4 +864,36 @@ export class PlanillaMensualService {
       },
     };
   }
+
+  async obtenerTrabajadoresPendientesPago(idPlanilla: string): Promise<{
+    success: boolean;
+    message: string;
+    trabajadoresPendientes: any[];
+  }> {
+    const planilla = await this.findOne(idPlanilla);
+
+    const trabajadoresPendientes = await this.detallePlanillaRepository.find({
+      where: {
+        idPlanillaMensual2: planilla,
+        estadoPago: EstadoPago.PENDIENTE,
+      },
+      relations: ['idTrabajador2'],
+    });
+
+    return {
+      success: true,
+      message: 'Trabajadores pendientes de pago obtenidos correctamente',
+      trabajadoresPendientes: trabajadoresPendientes.map(detalle => ({
+        idDetalle: detalle.idDetallePlanilla,
+        idTrabajador: detalle.idTrabajador,
+        nombre: detalle.idTrabajador2.nombre,
+        apellido: detalle.idTrabajador2.apellido,
+        nroDocumento: detalle.idTrabajador2.nroDocumento,
+        sueldoNeto: detalle.sueldoNeto,
+        estadoPago: detalle.estadoPago,
+        diasTrabajados: detalle.diasTrabajados,
+      })),
+    };
+  }
+
 }
