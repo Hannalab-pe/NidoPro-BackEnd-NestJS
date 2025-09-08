@@ -13,19 +13,19 @@ import { ContactoEmergencia } from 'src/contacto-emergencia/entities/contacto-em
 
 @Injectable()
 export class MatriculaService {
-
   constructor(
-    @InjectRepository(Matricula) private matriculaRepository: Repository<Matricula>,
+    @InjectRepository(Matricula)
+    private matriculaRepository: Repository<Matricula>,
 
     private readonly aulaRepository: AulaService,
     private apoderadoService: ApoderadoService,
     private estudianteService: EstudianteService,
     private gradoService: GradoService,
-    private dataSource: DataSource
-  ) { }
+    private dataSource: DataSource,
+  ) {}
 
   async create(createMatriculaDto: CreateMatriculaDto): Promise<Matricula> {
-    return await this.dataSource.transaction(async manager => {
+    return await this.dataSource.transaction(async (manager) => {
       let apoderado: any = null;
       let estudiante: any = null;
 
@@ -33,7 +33,9 @@ export class MatriculaService {
 
       // Si se proporciona ID, buscar por ID primero
       if (createMatriculaDto.idApoderado) {
-        apoderado = await this.apoderadoService.findOne(createMatriculaDto.idApoderado);
+        apoderado = await this.apoderadoService.findOne(
+          createMatriculaDto.idApoderado,
+        );
       }
 
       // Si no se encontró por ID y se tienen datos, buscar por documento
@@ -41,7 +43,7 @@ export class MatriculaService {
         // Buscar por documento si existe el método
         try {
           apoderado = await this.apoderadoService.findByDocumento(
-            createMatriculaDto.apoderadoData.documentoIdentidad
+            createMatriculaDto.apoderadoData.documentoIdentidad,
           );
         } catch (error) {
           // Si no existe el método findByDocumento, continuamos
@@ -53,19 +55,25 @@ export class MatriculaService {
       if (!apoderado) {
         // Validar que se proporcionaron datos del apoderado
         if (!createMatriculaDto.apoderadoData) {
-          throw new Error("Se requiere proporcionar idApoderado o apoderadoData para crear la matrícula");
+          throw new Error(
+            'Se requiere proporcionar idApoderado o apoderadoData para crear la matrícula',
+          );
         }
 
         // Validar campos requeridos para crear apoderado
-        if (!createMatriculaDto.apoderadoData.nombre ||
+        if (
+          !createMatriculaDto.apoderadoData.nombre ||
           !createMatriculaDto.apoderadoData.apellido ||
           !createMatriculaDto.apoderadoData.tipoDocumentoIdentidad ||
-          !createMatriculaDto.apoderadoData.documentoIdentidad) {
-          throw new Error("Para crear un apoderado son requeridos: nombre, apellido, tipoDocumentoIdentidad y documentoIdentidad");
+          !createMatriculaDto.apoderadoData.documentoIdentidad
+        ) {
+          throw new Error(
+            'Para crear un apoderado son requeridos: nombre, apellido, tipoDocumentoIdentidad y documentoIdentidad',
+          );
         }
 
         if (Array.isArray(createMatriculaDto.apoderadoData)) {
-          createMatriculaDto.apoderadoData.forEach(apoderadoData => {
+          createMatriculaDto.apoderadoData.forEach((apoderadoData) => {
             const createApoderadoDto = {
               nombre: apoderadoData.nombre,
               apellido: apoderadoData.apellido,
@@ -83,10 +91,13 @@ export class MatriculaService {
           numero: createMatriculaDto.apoderadoData.numero || null,
           correo: createMatriculaDto.apoderadoData.correo || null,
           direccion: createMatriculaDto.apoderadoData.direccion || null,
-          tipoDocumentoIdentidad: createMatriculaDto.apoderadoData.tipoDocumentoIdentidad,
-          documentoIdentidad: createMatriculaDto.apoderadoData.documentoIdentidad,
+          tipoDocumentoIdentidad:
+            createMatriculaDto.apoderadoData.tipoDocumentoIdentidad,
+          documentoIdentidad:
+            createMatriculaDto.apoderadoData.documentoIdentidad,
           esPrincipal: createMatriculaDto.apoderadoData.esPrincipal ?? true, // Por defecto es principal
-          tipoApoderado: createMatriculaDto.apoderadoData.tipoApoderado || 'principal',
+          tipoApoderado:
+            createMatriculaDto.apoderadoData.tipoApoderado || 'principal',
         };
 
         apoderado = await this.apoderadoService.create(createApoderadoDto);
@@ -97,7 +108,9 @@ export class MatriculaService {
       // Si se proporciona ID, buscar por ID primero
       if (createMatriculaDto.idEstudiante) {
         try {
-          estudiante = await this.estudianteService.findOne(createMatriculaDto.idEstudiante);
+          estudiante = await this.estudianteService.findOne(
+            createMatriculaDto.idEstudiante,
+          );
         } catch (error) {
           estudiante = null;
         }
@@ -108,7 +121,7 @@ export class MatriculaService {
         try {
           // Buscar por documento si existe el método
           estudiante = await this.estudianteService.findByDocumento(
-            createMatriculaDto.estudianteData.nroDocumento
+            createMatriculaDto.estudianteData.nroDocumento,
           );
         } catch (error) {
           // Si no existe el método findByDocumento, continuamos
@@ -120,83 +133,156 @@ export class MatriculaService {
       if (!estudiante) {
         // Validar que se proporcionaron datos del estudiante
         if (!createMatriculaDto.estudianteData) {
-          throw new Error("Se requiere proporcionar idEstudiante o estudianteData para crear la matrícula");
+          throw new Error(
+            'Se requiere proporcionar idEstudiante o estudianteData para crear la matrícula',
+          );
         }
 
         // Validar campos requeridos para crear estudiante
-        if (!createMatriculaDto.estudianteData.nombre ||
+        if (
+          !createMatriculaDto.estudianteData.nombre ||
           !createMatriculaDto.estudianteData.apellido ||
           !createMatriculaDto.estudianteData.idRol ||
-          !createMatriculaDto.estudianteData.nroDocumento) {
-          throw new Error("Para crear un estudiante son requeridos: nombre, apellido, idRol y nroDocumento");
+          !createMatriculaDto.estudianteData.nroDocumento
+        ) {
+          throw new Error(
+            'Para crear un estudiante son requeridos: nombre, apellido, idRol y nroDocumento',
+          );
         }
 
         // 1️⃣ PRIMERO: Crear DTO para el servicio de estudiante
         const createEstudianteDto: any = {
           nombre: createMatriculaDto.estudianteData.nombre,
           apellido: createMatriculaDto.estudianteData.apellido,
-          tipoDocumento: createMatriculaDto.estudianteData.tipoDocumento || null,
+          tipoDocumento:
+            createMatriculaDto.estudianteData.tipoDocumento || null,
           nroDocumento: createMatriculaDto.estudianteData.nroDocumento,
-          observaciones: createMatriculaDto.estudianteData.observaciones || null,
+          observaciones:
+            createMatriculaDto.estudianteData.observaciones || null,
           idRol: createMatriculaDto.estudianteData.idRol,
-          imagen_estudiante: createMatriculaDto.estudianteData.imagen_estudiante || null,
+          imagen_estudiante:
+            createMatriculaDto.estudianteData.imagen_estudiante || null,
         };
 
         // 2️⃣ CREAR EL ESTUDIANTE
-        const resultadoEstudiante = await this.estudianteService.create(createEstudianteDto);
+        const resultadoEstudiante =
+          await this.estudianteService.create(createEstudianteDto);
         estudiante = resultadoEstudiante.estudiante || resultadoEstudiante;
       }
 
       // === 3️⃣ CREAR CONTACTOS DE EMERGENCIA (SIEMPRE, INDEPENDIENTE DE SI ES NUEVO O EXISTENTE) ===
-      console.log('🔍 DEBUGGING COMPLETO - createMatriculaDto:', JSON.stringify(createMatriculaDto, null, 2));
-      console.log('🔍 DEBUGGING - estudianteData completo:', createMatriculaDto.estudianteData);
+      console.log(
+        '🔍 DEBUGGING COMPLETO - createMatriculaDto:',
+        JSON.stringify(createMatriculaDto, null, 2),
+      );
+      console.log(
+        '🔍 DEBUGGING - estudianteData completo:',
+        createMatriculaDto.estudianteData,
+      );
       console.log('🔍 DEBUGGING - Datos de contactos:', {
         tieneEstudianteData: !!createMatriculaDto.estudianteData,
-        tieneContactos: !!createMatriculaDto.estudianteData?.contactosEmergencia,
-        cantidadContactos: createMatriculaDto.estudianteData?.contactosEmergencia?.length || 0,
+        tieneContactos:
+          !!createMatriculaDto.estudianteData?.contactosEmergencia,
+        cantidadContactos:
+          createMatriculaDto.estudianteData?.contactosEmergencia?.length || 0,
         contactos: createMatriculaDto.estudianteData?.contactosEmergencia,
-        tipoDeContactos: typeof createMatriculaDto.estudianteData?.contactosEmergencia
+        tipoDeContactos:
+          typeof createMatriculaDto.estudianteData?.contactosEmergencia,
       });
 
-      if (createMatriculaDto.estudianteData?.contactosEmergencia &&
-        createMatriculaDto.estudianteData.contactosEmergencia.length > 0) {
+      if (
+        createMatriculaDto.estudianteData?.contactosEmergencia &&
+        createMatriculaDto.estudianteData.contactosEmergencia.length > 0
+      ) {
         console.log('✅ Creando contactos de emergencia...');
-        for (const contactoData of createMatriculaDto.estudianteData.contactosEmergencia) {
+        for (const contactoData of createMatriculaDto.estudianteData
+          .contactosEmergencia) {
           const contactoEmergencia = new ContactoEmergencia();
           contactoEmergencia.nombre = contactoData.nombre;
           contactoEmergencia.apellido = contactoData.apellido;
           contactoEmergencia.telefono = contactoData.telefono;
           contactoEmergencia.email = contactoData.email || null;
           contactoEmergencia.tipoContacto = contactoData.tipoContacto;
-          contactoEmergencia.relacionEstudiante = contactoData.relacionEstudiante || contactoData.tipoContacto; // Si no se proporciona, usar tipoContacto
+          contactoEmergencia.relacionEstudiante =
+            contactoData.relacionEstudiante || contactoData.tipoContacto; // Si no se proporciona, usar tipoContacto
           contactoEmergencia.esPrincipal = contactoData.esPrincipal || false;
           contactoEmergencia.prioridad = contactoData.prioridad || 1;
           contactoEmergencia.idEstudiante = estudiante; // TypeORM maneja automáticamente la asignación de la entidad
 
-          const contactoGuardado = await manager.save(ContactoEmergencia, contactoEmergencia);
-          console.log('📞 Contacto guardado:', contactoGuardado.nombre, contactoGuardado.apellido);
+          const contactoGuardado = await manager.save(
+            ContactoEmergencia,
+            contactoEmergencia,
+          );
+          console.log(
+            '📞 Contacto guardado:',
+            contactoGuardado.nombre,
+            contactoGuardado.apellido,
+          );
         }
       } else {
-        console.log('❌ No se enviaron contactos de emergencia o array está vacío');
+        console.log(
+          '❌ No se enviaron contactos de emergencia o array está vacío',
+        );
         console.log('❌ Condiciones del if:');
-        console.log('   - createMatriculaDto.estudianteData existe:', !!createMatriculaDto.estudianteData);
-        console.log('   - contactosEmergencia existe:', !!createMatriculaDto.estudianteData?.contactosEmergencia);
-        console.log('   - contactosEmergencia.length > 0:', (createMatriculaDto.estudianteData?.contactosEmergencia?.length || 0) > 0);
+        console.log(
+          '   - createMatriculaDto.estudianteData existe:',
+          !!createMatriculaDto.estudianteData,
+        );
+        console.log(
+          '   - contactosEmergencia existe:',
+          !!createMatriculaDto.estudianteData?.contactosEmergencia,
+        );
+        console.log(
+          '   - contactosEmergencia.length > 0:',
+          (createMatriculaDto.estudianteData?.contactosEmergencia?.length ||
+            0) > 0,
+        );
       }
 
       // === VERIFICAR GRADO CON PENSIÓN ===
       const grado = await this.gradoService.findOne(createMatriculaDto.idGrado);
       if (!grado) {
-        throw new Error("Grado no encontrado. Verifique que el ID del grado sea válido");
+        throw new Error(
+          'Grado no encontrado. Verifique que el ID del grado sea válido',
+        );
       }
 
       // === VERIFICAR QUE SE REQUIERE AL MENOS UN APODERADO Y UN ESTUDIANTE ===
-      if (!createMatriculaDto.idApoderado && !createMatriculaDto.apoderadoData) {
-        throw new Error("Se requiere proporcionar idApoderado o apoderadoData");
+      if (
+        !createMatriculaDto.idApoderado &&
+        !createMatriculaDto.apoderadoData
+      ) {
+        throw new Error('Se requiere proporcionar idApoderado o apoderadoData');
       }
 
-      if (!createMatriculaDto.idEstudiante && !createMatriculaDto.estudianteData) {
-        throw new Error("Se requiere proporcionar idEstudiante o estudianteData");
+      if (
+        !createMatriculaDto.idEstudiante &&
+        !createMatriculaDto.estudianteData
+      ) {
+        throw new Error(
+          'Se requiere proporcionar idEstudiante o estudianteData',
+        );
+      }
+
+      // === VALIDAR QUE EL ESTUDIANTE NO ESTÉ YA MATRICULADO EN EL AÑO ESCOLAR ===
+      const anioEscolarActual =
+        createMatriculaDto.anioEscolar || new Date().getFullYear().toString();
+
+      const matriculaExistente = await manager.findOne(Matricula, {
+        where: {
+          idEstudiante: { idEstudiante: estudiante.idEstudiante },
+          anioEscolar: anioEscolarActual,
+        },
+        relations: ['matriculaAula', 'matriculaAula.aula'],
+      });
+
+      if (matriculaExistente) {
+        const aulaInfo = matriculaExistente.matriculaAula?.aula
+          ? ` en el aula sección ${matriculaExistente.matriculaAula.aula.seccion}`
+          : '';
+        throw new Error(
+          `El estudiante ${estudiante.nombre} ${estudiante.apellido} ya está matriculado en el año escolar ${anioEscolarActual}${aulaInfo}. No se puede registrar dos veces en el mismo año.`,
+        );
       }
 
       // === CREAR MATRÍCULA ===
@@ -205,6 +291,7 @@ export class MatriculaService {
       matricula.fechaIngreso = createMatriculaDto.fechaIngreso;
       matricula.metodoPago = createMatriculaDto.metodoPago ?? null;
       matricula.voucherImg = createMatriculaDto.voucherImg ?? null;
+      matricula.anioEscolar = anioEscolarActual; // Usar el año escolar validado
       matricula.idApoderado = apoderado;
       matricula.idEstudiante = estudiante;
       matricula.idGrado = grado;
@@ -216,56 +303,78 @@ export class MatriculaService {
       const matriculaCompleta = await manager.findOne(Matricula, {
         where: { idMatricula: matriculaGuardada.idMatricula },
         relations: [
-          'idApoderado',           // Datos completos del apoderado
-          'idEstudiante',          // Datos completos del estudiante
+          'idApoderado', // Datos completos del apoderado
+          'idEstudiante', // Datos completos del estudiante
           'idEstudiante.idUsuario', // Usuario asociado al estudiante
           'idEstudiante.contactosEmergencia', // Contactos de emergencia del estudiante
-          'idGrado',               // Datos completos del grado
-          'idGrado.idPension'      // Información de la pensión del grado
-        ]
+          'idGrado', // Datos completos del grado
+          'idGrado.idPension', // Información de la pensión del grado
+        ],
       });
 
       if (!matriculaCompleta) {
-        throw new Error("Error al recuperar la matrícula creada");
+        throw new Error('Error al recuperar la matrícula creada');
       }
 
       try {
         let aulaAsignada: any = null;
-        let tipoAsignacion = createMatriculaDto.tipoAsignacionAula || 'automatica';
+        let tipoAsignacion =
+          createMatriculaDto.tipoAsignacionAula || 'automatica';
 
         // === VERIFICAR SI SE ESPECIFICÓ UN AULA Y ES ASIGNACIÓN MANUAL ===
-        if (createMatriculaDto.idAulaEspecifica && tipoAsignacion === 'manual') {
+        if (
+          createMatriculaDto.idAulaEspecifica &&
+          tipoAsignacion === 'manual'
+        ) {
           // Verificar que el aula existe y pertenece al grado correcto
-          const aulaEspecifica = await this.aulaRepository.aulaEspecifica(createMatriculaDto.idAulaEspecifica, createMatriculaDto.idGrado);
+          const aulaEspecifica = await this.aulaRepository.aulaEspecifica(
+            createMatriculaDto.idAulaEspecifica,
+            createMatriculaDto.idGrado,
+          );
 
           if (!aulaEspecifica) {
-            throw new Error("El aula especificada no existe o no pertenece al grado seleccionado");
+            throw new Error(
+              'El aula especificada no existe o no pertenece al grado seleccionado',
+            );
           }
 
           // Verificar disponibilidad del aula específica
-          const aulasDisponibles = await this.aulaRepository.buscarPorCantidadGrado(createMatriculaDto.idGrado);
-          const aulaDisponible = aulasDisponibles.find(aula => aula.idAula === createMatriculaDto.idAulaEspecifica);
+          const aulasDisponibles =
+            await this.aulaRepository.buscarPorCantidadGrado(
+              createMatriculaDto.idGrado,
+            );
+          const aulaDisponible = aulasDisponibles.find(
+            (aula) => aula.idAula === createMatriculaDto.idAulaEspecifica,
+          );
 
           if (!aulaDisponible) {
-            throw new Error("El aula especificada no tiene cupos disponibles");
+            throw new Error('El aula especificada no tiene cupos disponibles');
           }
 
           aulaAsignada = aulaEspecifica;
 
           // Log para registro administrativo
-          console.log(`🎯 Asignación MANUAL de aula: Estudiante asignado a ${aulaEspecifica.seccion} por motivo: ${createMatriculaDto.motivoPreferencia || 'No especificado'}`);
-
+          console.log(
+            `🎯 Asignación MANUAL de aula: Estudiante asignado a ${aulaEspecifica.seccion} por motivo: ${createMatriculaDto.motivoPreferencia || 'No especificado'}`,
+          );
         } else {
           // === ASIGNACIÓN AUTOMÁTICA (LÓGICA ORIGINAL) ===
-          const aulasDisponibles = await this.aulaRepository.buscarPorCantidadGrado(createMatriculaDto.idGrado);
+          const aulasDisponibles =
+            await this.aulaRepository.buscarPorCantidadGrado(
+              createMatriculaDto.idGrado,
+            );
 
           if (aulasDisponibles.length === 0) {
-            throw new Error("No hay aulas disponibles para el grado seleccionado");
+            throw new Error(
+              'No hay aulas disponibles para el grado seleccionado',
+            );
           }
 
           aulaAsignada = aulasDisponibles[0]; // Primera aula disponible (mejor opción)
 
-          console.log(`🤖 Asignación AUTOMÁTICA de aula: Estudiante asignado a sección ${aulaAsignada.seccion} (distribución equilibrada)`);
+          console.log(
+            `🤖 Asignación AUTOMÁTICA de aula: Estudiante asignado a sección ${aulaAsignada.seccion} (distribución equilibrada)`,
+          );
         }
 
         // === CREAR LA ASIGNACIÓN ===
@@ -275,19 +384,22 @@ export class MatriculaService {
         asignacionAula.fechaAsignacion = new Date().toISOString().split('T')[0];
         asignacionAula.estado = 'activo';
 
-        const asignacionGuardada = await manager.save(MatriculaAula, asignacionAula);
+        const asignacionGuardada = await manager.save(
+          MatriculaAula,
+          asignacionAula,
+        );
 
         //cargar asignacion completa y agregar a la respuesta
         const asignacionCompleta = await manager.findOne(MatriculaAula, {
           where: { idMatriculaAula: asignacionGuardada.idMatriculaAula },
-          relations: ['aula']
+          relations: ['aula'],
         });
 
         if (asignacionCompleta) {
           matriculaCompleta.matriculaAula = asignacionCompleta;
         }
       } catch (error) {
-        throw new Error("Error al asignar aula a la matrícula", error);
+        throw new Error('Error al asignar aula a la matrícula', error);
       }
 
       return matriculaCompleta;
@@ -304,7 +416,7 @@ export class MatriculaService {
         'idGrado',
         'idGrado.idPension',
         'matriculaAula',
-        'matriculaAula.aula'
+        'matriculaAula.aula',
       ],
       select: {
         idMatricula: true,
@@ -319,7 +431,7 @@ export class MatriculaService {
           idUsuario: {
             idUsuario: true,
             usuario: true,
-            estaActivo: true
+            estaActivo: true,
           },
           contactosEmergencia: {
             idContactoEmergencia: true,
@@ -329,8 +441,8 @@ export class MatriculaService {
             email: true,
             tipoContacto: true,
             esPrincipal: true,
-            prioridad: true
-          }
+            prioridad: true,
+          },
         },
         idApoderado: {
           idApoderado: true,
@@ -341,7 +453,7 @@ export class MatriculaService {
           direccion: true,
           documentoIdentidad: true,
           esPrincipal: true,
-          tipoApoderado: true
+          tipoApoderado: true,
         },
         idGrado: {
           idGrado: true,
@@ -349,10 +461,10 @@ export class MatriculaService {
           descripcion: true,
           idPension: {
             idPension: true,
-            monto: true
-          }
-        }
-      }
+            monto: true,
+          },
+        },
+      },
     });
   }
 
@@ -367,7 +479,9 @@ export class MatriculaService {
       .leftJoinAndSelect('matriculaAula.aula', 'aula')
       .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
       .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
-      .where('contactos.tipoContacto IN (:...tipos)', { tipos: ['padre', 'madre'] })
+      .where('contactos.tipoContacto IN (:...tipos)', {
+        tipos: ['padre', 'madre'],
+      })
       .andWhere('contactos.estaActivo = :activo', { activo: true })
       .orderBy('contactos.prioridad', 'ASC')
       .addOrderBy('matricula.fechaIngreso', 'DESC')
@@ -422,8 +536,8 @@ export class MatriculaService {
         'idGrado',
         'idGrado.idPension',
         'matriculaAula',
-        'matriculaAula.aula'
-      ]
+        'matriculaAula.aula',
+      ],
     });
   }
 
@@ -449,7 +563,7 @@ export class MatriculaService {
       page = 1,
       limit = 10,
       sortBy = 'fechaIngreso',
-      sortOrder = 'DESC'
+      sortOrder = 'DESC',
     } = searchDto;
 
     // Crear el query builder con las relaciones necesarias
@@ -465,78 +579,122 @@ export class MatriculaService {
 
     // === FILTROS POR FECHAS ===
     if (fechaIngresoDesde) {
-      queryBuilder = queryBuilder.andWhere('matricula.fechaIngreso >= :fechaDesde', {
-        fechaDesde: fechaIngresoDesde
-      });
+      queryBuilder = queryBuilder.andWhere(
+        'matricula.fechaIngreso >= :fechaDesde',
+        {
+          fechaDesde: fechaIngresoDesde,
+        },
+      );
     }
 
     if (fechaIngresoHasta) {
-      queryBuilder = queryBuilder.andWhere('matricula.fechaIngreso <= :fechaHasta', {
-        fechaHasta: fechaIngresoHasta
-      });
+      queryBuilder = queryBuilder.andWhere(
+        'matricula.fechaIngreso <= :fechaHasta',
+        {
+          fechaHasta: fechaIngresoHasta,
+        },
+      );
     }
 
     // === FILTROS POR IDs ===
     if (idGrado) {
-      queryBuilder = queryBuilder.andWhere('matricula.idGrado = :idGrado', { idGrado });
+      queryBuilder = queryBuilder.andWhere('matricula.idGrado = :idGrado', {
+        idGrado,
+      });
     }
 
     if (idEstudiante) {
-      queryBuilder = queryBuilder.andWhere('matricula.idEstudiante = :idEstudiante', { idEstudiante });
+      queryBuilder = queryBuilder.andWhere(
+        'matricula.idEstudiante = :idEstudiante',
+        { idEstudiante },
+      );
     }
 
     if (idApoderado) {
-      queryBuilder = queryBuilder.andWhere('matricula.idApoderado = :idApoderado', { idApoderado });
+      queryBuilder = queryBuilder.andWhere(
+        'matricula.idApoderado = :idApoderado',
+        { idApoderado },
+      );
     }
 
     // === FILTROS POR DNI ===
     if (dniEstudiante) {
-      queryBuilder = queryBuilder.andWhere('estudiante.nroDocumento = :dniEstudiante', { dniEstudiante });
+      queryBuilder = queryBuilder.andWhere(
+        'estudiante.nroDocumento = :dniEstudiante',
+        { dniEstudiante },
+      );
     }
 
     if (dniApoderado) {
-      queryBuilder = queryBuilder.andWhere('apoderado.documentoIdentidad = :dniApoderado', { dniApoderado });
+      queryBuilder = queryBuilder.andWhere(
+        'apoderado.documentoIdentidad = :dniApoderado',
+        { dniApoderado },
+      );
     }
 
     // === FILTROS POR DATOS DE MATRÍCULA ===
     if (metodoPago) {
-      queryBuilder = queryBuilder.andWhere('matricula.metodoPago = :metodoPago', { metodoPago });
+      queryBuilder = queryBuilder.andWhere(
+        'matricula.metodoPago = :metodoPago',
+        { metodoPago },
+      );
     }
 
     if (costoMinimo) {
-      queryBuilder = queryBuilder.andWhere('matricula.costoMatricula >= :costoMinimo', { costoMinimo });
+      queryBuilder = queryBuilder.andWhere(
+        'matricula.costoMatricula >= :costoMinimo',
+        { costoMinimo },
+      );
     }
 
     if (costoMaximo) {
-      queryBuilder = queryBuilder.andWhere('matricula.costoMatricula <= :costoMaximo', { costoMaximo });
+      queryBuilder = queryBuilder.andWhere(
+        'matricula.costoMatricula <= :costoMaximo',
+        { costoMaximo },
+      );
     }
 
     // === FILTROS POR NOMBRES (BÚSQUEDA PARCIAL) ===
     if (nombreEstudiante) {
-      queryBuilder = queryBuilder.andWhere('LOWER(estudiante.nombre) LIKE LOWER(:nombreEstudiante)', {
-        nombreEstudiante: `%${nombreEstudiante}%`
-      });
+      queryBuilder = queryBuilder.andWhere(
+        'LOWER(estudiante.nombre) LIKE LOWER(:nombreEstudiante)',
+        {
+          nombreEstudiante: `%${nombreEstudiante}%`,
+        },
+      );
     }
 
     if (apellidoEstudiante) {
-      queryBuilder = queryBuilder.andWhere('LOWER(estudiante.apellido) LIKE LOWER(:apellidoEstudiante)', {
-        apellidoEstudiante: `%${apellidoEstudiante}%`
-      });
+      queryBuilder = queryBuilder.andWhere(
+        'LOWER(estudiante.apellido) LIKE LOWER(:apellidoEstudiante)',
+        {
+          apellidoEstudiante: `%${apellidoEstudiante}%`,
+        },
+      );
     }
 
     if (nombreApoderado) {
-      queryBuilder = queryBuilder.andWhere('LOWER(apoderado.nombre) LIKE LOWER(:nombreApoderado)', {
-        nombreApoderado: `%${nombreApoderado}%`
-      });
+      queryBuilder = queryBuilder.andWhere(
+        'LOWER(apoderado.nombre) LIKE LOWER(:nombreApoderado)',
+        {
+          nombreApoderado: `%${nombreApoderado}%`,
+        },
+      );
     }
 
     // === ORDENAMIENTO ===
     switch (sortBy) {
       case 'fechaIngreso':
-        queryBuilder = queryBuilder.orderBy('matricula.fechaIngreso', sortOrder);
+        queryBuilder = queryBuilder.orderBy(
+          'matricula.fechaIngreso',
+          sortOrder,
+        );
         break;
       case 'costoMatricula':
-        queryBuilder = queryBuilder.orderBy('matricula.costoMatricula', sortOrder);
+        queryBuilder = queryBuilder.orderBy(
+          'matricula.costoMatricula',
+          sortOrder,
+        );
         break;
       case 'nombreEstudiante':
         queryBuilder = queryBuilder.orderBy('estudiante.nombre', sortOrder);
@@ -564,12 +722,12 @@ export class MatriculaService {
         totalItems: total,
         itemsPerPage: limit,
         hasNextPage: page < Math.ceil(total / limit),
-        hasPrevPage: page > 1
+        hasPrevPage: page > 1,
       },
       filters: {
         applied: this.getAppliedFilters(searchDto),
-        total: this.countAppliedFilters(searchDto)
-      }
+        total: this.countAppliedFilters(searchDto),
+      },
     };
   }
 
@@ -586,7 +744,8 @@ export class MatriculaService {
     if (searchDto.costoMinimo) appliedFilters.push('Costo mínimo');
     if (searchDto.costoMaximo) appliedFilters.push('Costo máximo');
     if (searchDto.nombreEstudiante) appliedFilters.push('Nombre estudiante');
-    if (searchDto.apellidoEstudiante) appliedFilters.push('Apellido estudiante');
+    if (searchDto.apellidoEstudiante)
+      appliedFilters.push('Apellido estudiante');
     if (searchDto.nombreApoderado) appliedFilters.push('Nombre apoderado');
 
     return appliedFilters;
@@ -607,9 +766,15 @@ export class MatriculaService {
       .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
       .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
       .leftJoinAndSelect('matriculaAula.aula', 'aula')
-      .where('LOWER(estudiante.nombre) LIKE LOWER(:term)', { term: `%${term}%` })
-      .orWhere('LOWER(estudiante.apellido) LIKE LOWER(:term)', { term: `%${term}%` })
-      .orWhere('LOWER(apoderado.nombre) LIKE LOWER(:term)', { term: `%${term}%` })
+      .where('LOWER(estudiante.nombre) LIKE LOWER(:term)', {
+        term: `%${term}%`,
+      })
+      .orWhere('LOWER(estudiante.apellido) LIKE LOWER(:term)', {
+        term: `%${term}%`,
+      })
+      .orWhere('LOWER(apoderado.nombre) LIKE LOWER(:term)', {
+        term: `%${term}%`,
+      })
       .orWhere('estudiante.nroDocumento LIKE :term', { term: `%${term}%` })
       .orWhere('apoderado.documentoIdentidad LIKE :term', { term: `%${term}%` })
       .orderBy('matricula.fechaIngreso', 'DESC')
@@ -617,4 +782,62 @@ export class MatriculaService {
       .getMany();
   }
 
+  // === MÉTODO PARA VERIFICAR SI UN ESTUDIANTE YA ESTÁ MATRICULADO EN UN AÑO ===
+  async verificarMatriculaExistente(
+    idEstudiante: string,
+    anioEscolar?: string,
+  ): Promise<{
+    existeMatricula: boolean;
+    matricula?: Matricula;
+    detalles?: string;
+  }> {
+    const anio = anioEscolar || new Date().getFullYear().toString();
+
+    const matriculaExistente = await this.matriculaRepository.findOne({
+      where: {
+        idEstudiante: { idEstudiante },
+        anioEscolar: anio,
+      },
+      relations: [
+        'idEstudiante',
+        'idGrado',
+        'matriculaAula',
+        'matriculaAula.aula',
+      ],
+    });
+
+    if (matriculaExistente) {
+      const aulaInfo = matriculaExistente.matriculaAula?.aula
+        ? ` - Aula: Sección ${matriculaExistente.matriculaAula.aula.seccion}`
+        : '';
+
+      return {
+        existeMatricula: true,
+        matricula: matriculaExistente,
+        detalles: `Estudiante ya matriculado en ${anio} - Grado: ${matriculaExistente.idGrado.grado}${aulaInfo}`,
+      };
+    }
+
+    return { existeMatricula: false };
+  }
+
+  // === MÉTODO PARA OBTENER MATRÍCULAS POR AÑO ESCOLAR ===
+  async findMatriculasPorAnio(anioEscolar: string): Promise<Matricula[]> {
+    return await this.matriculaRepository.find({
+      where: { anioEscolar },
+      relations: [
+        'idApoderado',
+        'idEstudiante',
+        'idEstudiante.idUsuario',
+        'idEstudiante.contactosEmergencia',
+        'idGrado',
+        'idGrado.idPension',
+        'matriculaAula',
+        'matriculaAula.aula',
+      ],
+      order: {
+        fechaIngreso: 'DESC',
+      },
+    });
+  }
 }
