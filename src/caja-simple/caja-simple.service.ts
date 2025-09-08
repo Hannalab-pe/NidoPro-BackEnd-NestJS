@@ -323,6 +323,26 @@ export class CajaSimpleService {
             .andWhere('caja.estado = :estado', { estado: 'CONFIRMADO' })
             .getRawOne();
 
+        if (mes) {
+            const queryWithMonth = this.cajaSimpleRepository
+                .createQueryBuilder('caja')
+                .select([
+                    'COUNT(*) as total_pagos',
+                    'SUM(caja.monto) as total_cobrado',
+                    'COUNT(DISTINCT caja.id_estudiante) as estudiantes_pagaron',
+                    'AVG(caja.monto) as promedio_pago'
+                ])
+                .where('caja.categoria = :categoria', { categoria: 'PENSION_MENSUAL' })
+                .andWhere('caja.tipo = :tipo', { tipo: 'INGRESO' })
+                .andWhere('caja.estado = :estado', { estado: 'CONFIRMADO' })
+                .andWhere('EXTRACT(MONTH FROM caja.fecha) = :mes', { mes });
+
+            if (anio) queryWithMonth.andWhere('EXTRACT(YEAR FROM caja.fecha) = :anio', { anio });
+
+            const resumenMes = await queryWithMonth.getRawOne();
+            return { movimientos, resumen: resumenMes };
+        }
+
         return { movimientos, resumen };
     }
 

@@ -117,7 +117,6 @@ export class MatriculaService {
       }
 
       // Si aún no existe, crear nuevo estudiante
-      // Si aún no existe, crear nuevo estudiante
       if (!estudiante) {
         // Validar que se proporcionaron datos del estudiante
         if (!createMatriculaDto.estudianteData) {
@@ -586,6 +585,29 @@ export class MatriculaService {
       .orWhere('apoderado.documentoIdentidad LIKE :term', { term: `%${term}%` })
       .orderBy('matricula.fechaIngreso', 'DESC')
       .take(limit)
+      .getMany();
+  }
+
+  async findEstudiantesMatriculadosParaPensiones(anioEscolar: number) {
+    return this.matriculaRepository
+      .createQueryBuilder('matricula')
+      .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
+      .leftJoinAndSelect('matricula.idGrado', 'grado')
+      .leftJoinAndSelect('grado.idPension', 'pension')
+      .where('EXTRACT(YEAR FROM matricula.fechaIngreso) = :anio', { anio: anioEscolar })
+      .andWhere('grado.estaActivo = :gradoActivo', { gradoActivo: true })
+      .andWhere('pension.idPension IS NOT NULL')
+      .select([
+        'matricula.idMatricula',
+        'matricula.fechaIngreso',
+        'estudiante.idEstudiante',
+        'estudiante.nombre',
+        'estudiante.apellido',
+        'grado.idGrado',
+        'grado.grado',
+        'pension.idPension',
+        'pension.monto'
+      ])
       .getMany();
   }
 
