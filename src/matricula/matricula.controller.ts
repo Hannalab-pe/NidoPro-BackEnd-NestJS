@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { MatriculaService } from './matricula.service';
 import { CreateMatriculaDto } from './dto/create-matricula.dto';
 import { ApiOperation, ApiQuery, ApiResponse, ApiParam } from '@nestjs/swagger';
@@ -7,7 +17,7 @@ import { RegistrarMatriculaEnCajaSimpleDto } from './dto/registrar-caja-simple.d
 
 @Controller('matricula')
 export class MatriculaController {
-  constructor(private readonly matriculaService: MatriculaService) { }
+  constructor(private readonly matriculaService: MatriculaService) {}
 
   @Post()
   @ApiOperation({ summary: 'Registrar una nueva matrícula para un estudiante' })
@@ -16,11 +26,11 @@ export class MatriculaController {
     const data = await this.matriculaService.create(createMatriculaDto);
     return {
       success: true,
-      message: "Matricula Registrada Correctamente",
+      message: 'Matricula Registrada Correctamente',
       info: {
-        data
-      }
-    }
+        data,
+      },
+    };
   }
 
   // ===== RUTAS ESPECÍFICAS PRIMERO (ANTES DE :id) =====
@@ -31,17 +41,18 @@ export class MatriculaController {
     const data = await this.matriculaService.findEstudiantesConApoderados();
     return {
       success: true,
-      message: "Estudiantes con Apoderados",
+      message: 'Estudiantes con Apoderados',
       info: {
-        data
-      }
-    }
+        data,
+      },
+    };
   }
 
   @Get('busquedaAvanzada')
   @ApiOperation({
     summary: 'Buscar matrículas con filtros avanzados',
-    description: 'Permite buscar matrículas usando múltiples filtros como fechas, grado, estudiante, apoderado, etc.'
+    description:
+      'Permite buscar matrículas usando múltiples filtros como fechas, grado, estudiante, apoderado, etc.',
   })
   @ApiResponse({
     status: 200,
@@ -54,39 +65,53 @@ export class MatriculaController {
   @Get('busquedaRapida')
   @ApiOperation({
     summary: 'Búsqueda rápida de matrículas',
-    description: 'Búsqueda rápida por nombre de estudiante, apoderado o DNI'
+    description: 'Búsqueda rápida por nombre de estudiante, apoderado o DNI',
   })
-  @ApiQuery({ name: 'term', description: 'Término de búsqueda', example: 'María' })
-  @ApiQuery({ name: 'limit', description: 'Límite de resultados', example: 5, required: false })
+  @ApiQuery({
+    name: 'term',
+    description: 'Término de búsqueda',
+    example: 'María',
+  })
+  @ApiQuery({
+    name: 'limit',
+    description: 'Límite de resultados',
+    example: 5,
+    required: false,
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de matrículas encontradas (máximo 5)',
   })
   async quickSearch(
     @Query('term') term: string,
-    @Query('limit') limit?: number
+    @Query('limit') limit?: number,
   ) {
     if (!term || term.trim() === '') {
       return {
         success: false,
         message: 'Término de búsqueda requerido',
-        info: { data: [] }
+        info: { data: [] },
       };
     }
     const data = await this.matriculaService.quickSearch(term, limit);
     return {
       success: true,
-      message: "Búsqueda rápida completada",
-      info: { data }
+      message: 'Búsqueda rápida completada',
+      info: { data },
     };
   }
 
   @Get('estudianteDNI/:dni')
   @ApiOperation({
     summary: 'Buscar matrículas por DNI del estudiante',
-    description: 'Encuentra todas las matrículas de un estudiante usando su DNI'
+    description:
+      'Encuentra todas las matrículas de un estudiante usando su DNI',
   })
-  @ApiParam({ name: 'dni', description: 'DNI del estudiante', example: '87654321' })
+  @ApiParam({
+    name: 'dni',
+    description: 'DNI del estudiante',
+    example: '87654321',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de matrículas del estudiante',
@@ -100,18 +125,32 @@ export class MatriculaController {
     return {
       success: true,
       message: `Matrículas encontradas para DNI: ${dni}`,
-      info: result
+      info: result,
     };
   }
 
   @Get('porGradoEstudiante/:idGrado')
   @ApiOperation({
     summary: 'Buscar matrículas por grado',
-    description: 'Encuentra todas las matrículas de un grado específico'
+    description: 'Encuentra todas las matrículas de un grado específico',
   })
-  @ApiParam({ name: 'idGrado', description: 'UUID del grado', example: 'c3d4e5f6-g7h8-9012-cdef-345678901234' })
-  @ApiQuery({ name: 'page', description: 'Página', example: 1, required: false })
-  @ApiQuery({ name: 'limit', description: 'Límite por página', example: 20, required: false })
+  @ApiParam({
+    name: 'idGrado',
+    description: 'UUID del grado',
+    example: 'c3d4e5f6-g7h8-9012-cdef-345678901234',
+  })
+  @ApiQuery({
+    name: 'page',
+    description: 'Página',
+    example: 1,
+    required: false,
+  })
+  @ApiQuery({
+    name: 'limit',
+    description: 'Límite por página',
+    example: 20,
+    required: false,
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de matrículas del grado',
@@ -119,7 +158,7 @@ export class MatriculaController {
   async getMatriculasByGrade(
     @Param('idGrado', ParseUUIDPipe) idGrado: string,
     @Query('page') page?: number,
-    @Query('limit') limit?: number
+    @Query('limit') limit?: number,
   ) {
     const searchDto = new SearchMatriculaDto();
     searchDto.idGrado = idGrado;
@@ -129,20 +168,39 @@ export class MatriculaController {
     const result = await this.matriculaService.search(searchDto);
     return {
       success: true,
-      message: "Matrículas por grado encontradas",
-      info: result
+      message: 'Matrículas por grado encontradas',
+      info: result,
     };
   }
 
   @Get('rangoFechas')
   @ApiOperation({
     summary: 'Buscar matrículas por rango de fechas',
-    description: 'Encuentra matrículas registradas en un rango de fechas específico'
+    description:
+      'Encuentra matrículas registradas en un rango de fechas específico',
   })
-  @ApiQuery({ name: 'fechaDesde', description: 'Fecha inicio', example: '2024-01-01' })
-  @ApiQuery({ name: 'fechaHasta', description: 'Fecha fin', example: '2024-12-31' })
-  @ApiQuery({ name: 'page', description: 'Página', example: 1, required: false })
-  @ApiQuery({ name: 'limit', description: 'Límite por página', example: 20, required: false })
+  @ApiQuery({
+    name: 'fechaDesde',
+    description: 'Fecha inicio',
+    example: '2024-01-01',
+  })
+  @ApiQuery({
+    name: 'fechaHasta',
+    description: 'Fecha fin',
+    example: '2024-12-31',
+  })
+  @ApiQuery({
+    name: 'page',
+    description: 'Página',
+    example: 1,
+    required: false,
+  })
+  @ApiQuery({
+    name: 'limit',
+    description: 'Límite por página',
+    example: 20,
+    required: false,
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista de matrículas en el rango de fechas',
@@ -151,7 +209,7 @@ export class MatriculaController {
     @Query('fechaDesde') fechaDesde: string,
     @Query('fechaHasta') fechaHasta: string,
     @Query('page') page?: number,
-    @Query('limit') limit?: number
+    @Query('limit') limit?: number,
   ) {
     const searchDto = new SearchMatriculaDto();
     searchDto.fechaIngresoDesde = fechaDesde;
@@ -162,8 +220,57 @@ export class MatriculaController {
     const result = await this.matriculaService.search(searchDto);
     return {
       success: true,
-      message: "Matrículas por rango de fechas encontradas",
-      info: result
+      message: 'Matrículas por rango de fechas encontradas',
+      info: result,
+    };
+  }
+
+  @Get('verificar-estudiante/:idEstudiante')
+  @ApiOperation({
+    summary: 'Verificar si un estudiante ya está matriculado en un año',
+    description:
+      'Verifica si un estudiante ya tiene matrícula registrada en un año escolar específico',
+  })
+  @ApiParam({ name: 'idEstudiante', description: 'UUID del estudiante' })
+  @ApiQuery({
+    name: 'anioEscolar',
+    description: 'Año escolar a verificar',
+    example: '2025',
+    required: false,
+  })
+  async verificarMatriculaEstudiante(
+    @Param('idEstudiante', ParseUUIDPipe) idEstudiante: string,
+    @Query('anioEscolar') anioEscolar?: string,
+  ) {
+    const resultado = await this.matriculaService.verificarMatriculaExistente(
+      idEstudiante,
+      anioEscolar,
+    );
+    return {
+      success: true,
+      message: resultado.existeMatricula
+        ? 'El estudiante ya está matriculado en este año'
+        : 'El estudiante no está matriculado en este año',
+      info: resultado,
+    };
+  }
+
+  @Get('anio-escolar/:anio')
+  @ApiOperation({
+    summary: 'Obtener matrículas por año escolar',
+    description: 'Encuentra todas las matrículas de un año escolar específico',
+  })
+  @ApiParam({ name: 'anio', description: 'Año escolar', example: '2025' })
+  async getMatriculasPorAnio(@Param('anio') anio: string) {
+    const data = await this.matriculaService.findMatriculasPorAnio(anio);
+    return {
+      success: true,
+      message: `Matrículas del año escolar ${anio}`,
+      info: {
+        data,
+        total: data.length,
+        anioEscolar: anio,
+      },
     };
   }
 
@@ -224,12 +331,19 @@ export class MatriculaController {
 
   @Get()
   @ApiOperation({ summary: 'Obtener todas las matrículas' })
-  @ApiQuery({ name: 'page', description: 'Página', example: 1, required: false })
-  @ApiQuery({ name: 'limit', description: 'Límite por página', example: 10, required: false })
-  findAll(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number
-  ) {
+  @ApiQuery({
+    name: 'page',
+    description: 'Página',
+    example: 1,
+    required: false,
+  })
+  @ApiQuery({
+    name: 'limit',
+    description: 'Límite por página',
+    example: 10,
+    required: false,
+  })
+  findAll(@Query('page') page?: number, @Query('limit') limit?: number) {
     const searchDto = new SearchMatriculaDto();
     searchDto.page = page || 1;
     searchDto.limit = limit || 10;
@@ -239,7 +353,11 @@ export class MatriculaController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener una matrícula por ID' })
-  @ApiParam({ name: 'id', description: 'UUID de la matrícula', example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
+  @ApiParam({
+    name: 'id',
+    description: 'UUID de la matrícula',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  })
   @ApiResponse({
     status: 200,
     description: 'Matrícula encontrada',
@@ -258,7 +376,11 @@ export class MatriculaController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar una matrícula por ID' })
-  @ApiParam({ name: 'id', description: 'UUID de la matrícula', example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' })
+  @ApiParam({
+    name: 'id',
+    description: 'UUID de la matrícula',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  })
   @ApiResponse({
     status: 200,
     description: 'Matrícula eliminada correctamente',
