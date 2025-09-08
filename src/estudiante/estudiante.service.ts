@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateEstudianteDto } from './dto/create-estudiante.dto';
 import { UpdateEstudianteDto } from './dto/update-estudiante.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -17,42 +21,50 @@ export class EstudianteService {
     private readonly rolRepository: Repository<Rol>,
     private readonly usuarioService: UsuarioService,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
-  async create(createEstudianteDto: CreateEstudianteDto): Promise<{ sucess: boolean; message: string; estudiante: Estudiante }> {
+  async create(
+    createEstudianteDto: CreateEstudianteDto,
+  ): Promise<{ sucess: boolean; message: string; estudiante: Estudiante }> {
     // Validar que el DNI esté presente
     if (!createEstudianteDto.nroDocumento) {
-      throw new BadRequestException('El número de documento es requerido para crear un estudiante');
+      throw new BadRequestException(
+        'El número de documento es requerido para crear un estudiante',
+      );
     }
 
     // Validar que el rol existe y es válido para estudiantes
     const rol = await this.rolRepository.findOne({
-      where: { idRol: createEstudianteDto.idRol, estaActivo: true }
+      where: { idRol: createEstudianteDto.idRol, estaActivo: true },
     });
 
     if (!rol) {
-      throw new BadRequestException('El rol especificado no existe o está inactivo');
+      throw new BadRequestException(
+        'El rol especificado no existe o está inactivo',
+      );
     }
 
     // Validar que el rol es apropiado para estudiantes
     const rolesValidosParaEstudiantes = [
       UserRole.ESTUDIANTE,
-      UserRole.APODERADO
+      UserRole.APODERADO,
     ];
 
     if (!rolesValidosParaEstudiantes.includes(rol.nombre as UserRole)) {
       throw new BadRequestException(
-        `El rol "${rol.nombre}" no es válido para estudiantes. Roles válidos: ${rolesValidosParaEstudiantes.join(', ')}`
+        `El rol "${rol.nombre}" no es válido para estudiantes. Roles válidos: ${rolesValidosParaEstudiantes.join(', ')}`,
       );
     }
 
     // Verificar que no exista un estudiante con el mismo número de documento
     const estudianteExistente = await this.estudianteRepository.findOne({
-      where: { nroDocumento: createEstudianteDto.nroDocumento }
+      where: { nroDocumento: createEstudianteDto.nroDocumento },
     });
 
     if (estudianteExistente) {
-      throw new BadRequestException(`Ya existe un estudiante con el número de documento: ${createEstudianteDto.nroDocumento}`);
+      throw new BadRequestException(
+        `Ya existe un estudiante con el número de documento: ${createEstudianteDto.nroDocumento}`,
+      );
     }
 
     // Crear un queryRunner para manejar la transacción
@@ -64,11 +76,14 @@ export class EstudianteService {
 
     try {
       // Crear usuario dentro de la transacción con contraseña hasheada
-      const nuevoUsuario = await this.usuarioService.createWithQueryRunner({
-        usuario: createEstudianteDto.nroDocumento,
-        contrasena: createEstudianteDto.nroDocumento, // Contraseña temporal = número de documento
-        estaActivo: true,
-      }, queryRunner);
+      const nuevoUsuario = await this.usuarioService.createWithQueryRunner(
+        {
+          usuario: createEstudianteDto.nroDocumento,
+          contrasena: createEstudianteDto.nroDocumento, // Contraseña temporal = número de documento
+          estaActivo: true,
+        },
+        queryRunner,
+      );
 
       // Crear estudiante dentro de la misma transacción
       const estudiante = queryRunner.manager.create(Estudiante, {
@@ -85,7 +100,7 @@ export class EstudianteService {
       // Cargar el estudiante completo con relaciones
       const estudianteCompleto = await this.estudianteRepository.findOne({
         where: { idEstudiante: savedEstudiante.idEstudiante },
-        relations: ['idRol', 'idUsuario']
+        relations: ['idRol', 'idUsuario', 'contactosEmergencia'],
       });
 
       if (!estudianteCompleto) {
@@ -100,7 +115,9 @@ export class EstudianteService {
     } catch (error) {
       // Si algo falla, hacer rollback
       await queryRunner.rollbackTransaction();
-      throw new BadRequestException('Error al crear estudiante: ' + error.message);
+      throw new BadRequestException(
+        'Error al crear estudiante: ' + error.message,
+      );
     } finally {
       // Liberar el queryRunner
       await queryRunner.release();
@@ -110,7 +127,7 @@ export class EstudianteService {
   async findByDocumento(dni: string): Promise<Estudiante> {
     const estudiante = await this.estudianteRepository.findOne({
       where: { nroDocumento: dni },
-      relations: ['idUsuario']
+      relations: ['idUsuario', 'contactosEmergencia'],
     });
     if (!estudiante) {
       throw new NotFoundException(`Estudiante con DNI ${dni} no encontrado`);
@@ -118,9 +135,13 @@ export class EstudianteService {
     return estudiante;
   }
 
-  async findAll(): Promise<{ sucess: boolean; message: string; estudiantes: Estudiante[] }> {
+  async findAll(): Promise<{
+    sucess: boolean;
+    message: string;
+    estudiantes: Estudiante[];
+  }> {
     const estudiantes = await this.estudianteRepository.find({
-      relations: ['idUsuario']
+      relations: ['idUsuario', 'contactosEmergencia'],
     });
     return {
       sucess: true,
@@ -131,8 +152,8 @@ export class EstudianteService {
 
   async findOne(id: string): Promise<Estudiante> {
     const estudiante = await this.estudianteRepository.findOne({
-      where: { idEstudiante: id }
-      , relations: ['idUsuario']
+      where: { idEstudiante: id },
+      relations: ['idUsuario', 'contactosEmergencia'],
     });
     if (!estudiante) {
       throw new NotFoundException(`Estudiante con ID ${id} no encontrado`);
@@ -140,7 +161,10 @@ export class EstudianteService {
     return estudiante;
   }
 
-  async update(id: string, updateEstudianteDto: UpdateEstudianteDto): Promise<{ sucess: boolean; message: string; estudiante: Estudiante }> {
+  async update(
+    id: string,
+    updateEstudianteDto: UpdateEstudianteDto,
+  ): Promise<{ sucess: boolean; message: string; estudiante: Estudiante }> {
     const estudiante = await this.findOne(id);
     const updateData: any = { ...updateEstudianteDto };
 
@@ -154,7 +178,7 @@ export class EstudianteService {
       sucess: true,
       message: 'Estudiante actualizado correctamente',
       estudiante: updatedEstudiante,
-    }
+    };
   }
 
   async remove(id: string): Promise<{ message: string }> {
@@ -163,5 +187,43 @@ export class EstudianteService {
     return {
       message: `Estudiante ${estudiante.nombre} ${estudiante.apellido} eliminado correctamente`,
     };
+  }
+
+  async findEstudiantesPorAula(
+    idAula: string,
+  ): Promise<{ success: boolean; message: string; estudiantes: any[] }> {
+    try {
+      // Validar que el ID del aula esté presente
+      if (!idAula) {
+        throw new BadRequestException('El ID del aula es requerido');
+      }
+
+      // Ejecutar la consulta SQL personalizada
+      const estudiantes = await this.dataSource.query(
+        `
+        SELECT DISTINCT e.id_estudiante, e.nombre, e.apellido, au.seccion
+        FROM public.estudiante e
+        INNER JOIN matricula ma ON ma.id_estudiante = e.id_estudiante 
+        INNER JOIN matricula_aula mat ON mat.id_matricula = ma.id_matricula 
+        INNER JOIN aula au ON au.id_aula = mat.id_aula 
+        WHERE au.id_aula = $1
+        ORDER BY au.seccion, e.apellido, e.nombre;
+      `,
+        [idAula],
+      );
+
+      return {
+        success: true,
+        message:
+          estudiantes.length > 0
+            ? `Se encontraron ${estudiantes.length} estudiante(s) en el aula`
+            : 'No se encontraron estudiantes en esta aula',
+        estudiantes,
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        `Error al buscar estudiantes por aula: ${error.message}`,
+      );
+    }
   }
 }

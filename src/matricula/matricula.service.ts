@@ -145,24 +145,43 @@ export class MatriculaService {
         // 2️⃣ CREAR EL ESTUDIANTE
         const resultadoEstudiante = await this.estudianteService.create(createEstudianteDto);
         estudiante = resultadoEstudiante.estudiante || resultadoEstudiante;
+      }
 
-        // 3️⃣ DESPUÉS: Crear contactos de emergencia (ahora estudiante ya existe)
-        if (createMatriculaDto.estudianteData?.contactosEmergencia &&
-          createMatriculaDto.estudianteData.contactosEmergencia.length > 0) {
-          for (const contactoData of createMatriculaDto.estudianteData.contactosEmergencia) {
-            const contactoEmergencia = new ContactoEmergencia();
-            contactoEmergencia.nombre = contactoData.nombre;
-            contactoEmergencia.apellido = contactoData.apellido;
-            contactoEmergencia.telefono = contactoData.telefono;
-            contactoEmergencia.email = contactoData.email || null;
-            contactoEmergencia.tipoContacto = contactoData.tipoContacto;
-            contactoEmergencia.esPrincipal = contactoData.esPrincipal || false;
-            contactoEmergencia.prioridad = contactoData.prioridad || 1;
-            contactoEmergencia.idEstudiante = estudiante;
+      // === 3️⃣ CREAR CONTACTOS DE EMERGENCIA (SIEMPRE, INDEPENDIENTE DE SI ES NUEVO O EXISTENTE) ===
+      console.log('🔍 DEBUGGING COMPLETO - createMatriculaDto:', JSON.stringify(createMatriculaDto, null, 2));
+      console.log('🔍 DEBUGGING - estudianteData completo:', createMatriculaDto.estudianteData);
+      console.log('🔍 DEBUGGING - Datos de contactos:', {
+        tieneEstudianteData: !!createMatriculaDto.estudianteData,
+        tieneContactos: !!createMatriculaDto.estudianteData?.contactosEmergencia,
+        cantidadContactos: createMatriculaDto.estudianteData?.contactosEmergencia?.length || 0,
+        contactos: createMatriculaDto.estudianteData?.contactosEmergencia,
+        tipoDeContactos: typeof createMatriculaDto.estudianteData?.contactosEmergencia
+      });
 
-            await manager.save(ContactoEmergencia, contactoEmergencia);
-          }
+      if (createMatriculaDto.estudianteData?.contactosEmergencia &&
+        createMatriculaDto.estudianteData.contactosEmergencia.length > 0) {
+        console.log('✅ Creando contactos de emergencia...');
+        for (const contactoData of createMatriculaDto.estudianteData.contactosEmergencia) {
+          const contactoEmergencia = new ContactoEmergencia();
+          contactoEmergencia.nombre = contactoData.nombre;
+          contactoEmergencia.apellido = contactoData.apellido;
+          contactoEmergencia.telefono = contactoData.telefono;
+          contactoEmergencia.email = contactoData.email || null;
+          contactoEmergencia.tipoContacto = contactoData.tipoContacto;
+          contactoEmergencia.relacionEstudiante = contactoData.relacionEstudiante || contactoData.tipoContacto; // Si no se proporciona, usar tipoContacto
+          contactoEmergencia.esPrincipal = contactoData.esPrincipal || false;
+          contactoEmergencia.prioridad = contactoData.prioridad || 1;
+          contactoEmergencia.idEstudiante = estudiante; // TypeORM maneja automáticamente la asignación de la entidad
+
+          const contactoGuardado = await manager.save(ContactoEmergencia, contactoEmergencia);
+          console.log('📞 Contacto guardado:', contactoGuardado.nombre, contactoGuardado.apellido);
         }
+      } else {
+        console.log('❌ No se enviaron contactos de emergencia o array está vacío');
+        console.log('❌ Condiciones del if:');
+        console.log('   - createMatriculaDto.estudianteData existe:', !!createMatriculaDto.estudianteData);
+        console.log('   - contactosEmergencia existe:', !!createMatriculaDto.estudianteData?.contactosEmergencia);
+        console.log('   - contactosEmergencia.length > 0:', (createMatriculaDto.estudianteData?.contactosEmergencia?.length || 0) > 0);
       }
 
       // === VERIFICAR GRADO CON PENSIÓN ===
@@ -200,6 +219,7 @@ export class MatriculaService {
           'idApoderado',           // Datos completos del apoderado
           'idEstudiante',          // Datos completos del estudiante
           'idEstudiante.idUsuario', // Usuario asociado al estudiante
+          'idEstudiante.contactosEmergencia', // Contactos de emergencia del estudiante
           'idGrado',               // Datos completos del grado
           'idGrado.idPension'      // Información de la pensión del grado
         ]
@@ -381,6 +401,7 @@ export class MatriculaService {
       .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
       .leftJoinAndSelect('matriculaAula.aula', 'aula')
       .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
+      .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
       .where('apoderado.esPrincipal = :principal', { principal: true })
       .orderBy('matricula.fechaIngreso', 'DESC')
       .getMany();
@@ -436,7 +457,11 @@ export class MatriculaService {
       .createQueryBuilder('matricula')
       .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
       .leftJoinAndSelect('matricula.idApoderado', 'apoderado')
-      .leftJoinAndSelect('matricula.idGrado', 'grado');
+      .leftJoinAndSelect('matricula.idGrado', 'grado')
+      .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
+      .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
+      .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
+      .leftJoinAndSelect('matriculaAula.aula', 'aula');
 
     // === FILTROS POR FECHAS ===
     if (fechaIngresoDesde) {
@@ -578,6 +603,10 @@ export class MatriculaService {
       .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
       .leftJoinAndSelect('matricula.idApoderado', 'apoderado')
       .leftJoinAndSelect('matricula.idGrado', 'grado')
+      .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
+      .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
+      .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
+      .leftJoinAndSelect('matriculaAula.aula', 'aula')
       .where('LOWER(estudiante.nombre) LIKE LOWER(:term)', { term: `%${term}%` })
       .orWhere('LOWER(estudiante.apellido) LIKE LOWER(:term)', { term: `%${term}%` })
       .orWhere('LOWER(apoderado.nombre) LIKE LOWER(:term)', { term: `%${term}%` })

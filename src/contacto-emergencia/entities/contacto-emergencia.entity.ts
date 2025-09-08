@@ -28,6 +28,9 @@ export class ContactoEmergencia {
     @Column("character varying", { name: "tipo_contacto", length: 50 })
     tipoContacto: string; // padre, madre, tio, abuelo, tutor, etc.
 
+    @Column("character varying", { name: "relacion_estudiante", length: 50 })
+    relacionEstudiante: string; // Relación específica con el estudiante
+
     @Column("boolean", { name: "es_principal", default: false })
     esPrincipal: boolean; // Para identificar el contacto principal
 

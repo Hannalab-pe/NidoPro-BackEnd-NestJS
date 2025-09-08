@@ -18,18 +18,25 @@ export class AuthService {
     @InjectRepository(Estudiante)
     private readonly estudianteRepository: Repository<Estudiante>,
     private readonly jwtService: JwtService,
-  ) { }
+  ) {}
 
-  async login(loginDto: LoginDto): Promise<{ access_token: string; usuario: any }> {
+  async login(
+    loginDto: LoginDto,
+  ): Promise<{ access_token: string; usuario: any }> {
     const { usuario, contrasena } = loginDto;
 
     // Buscar usuario por nombre de usuario
+
     const user = await this.usuarioRepository.findOne({
-      where: { usuario, estaActivo: true },
+      where: { usuario },
     });
 
     if (!user) {
       throw new UnauthorizedException('Credenciales inválidas');
+    }
+
+    if (user.estaActivo === false) {
+      throw new UnauthorizedException('No está autorizado para ingresar');
     }
 
     // Verificar contraseña
@@ -41,14 +48,15 @@ export class AuthService {
     // Verificar si es trabajador o estudiante
     const estudiante = await this.estudianteRepository.findOne({
       where: { id_Usuario: user.idUsuario },
-      relations: ['idRol']
+      relations: ['idRol'],
     });
-    
+
     const trabajador = await this.trabajadorRepository
       .createQueryBuilder('trabajador')
       .leftJoinAndSelect('trabajador.idRol', 'rol')
       .leftJoinAndSelect('trabajador.idUsuario', 'usuario')
       .where('usuario.idUsuario = :userId', { userId: user.idUsuario })
+      .andWhere('trabajador.estaActivo = :activo', { activo: true })
       .getOne();
 
     let tipo: 'trabajador' | 'estudiante';
@@ -60,11 +68,29 @@ export class AuthService {
       rol = trabajador.idRol.nombre;
       entidadId = trabajador.idTrabajador;
     } else if (estudiante) {
+      // La validación para estudiantes ya existe implícitamente
+      // ya que los estudiantes no tienen campo estaActivo
       tipo = 'estudiante';
       rol = estudiante.idRol?.nombre || 'ESTUDIANTE';
       entidadId = estudiante.idEstudiante;
     } else {
-      throw new UnauthorizedException('Usuario no asociado a estudiante ni trabajador');
+      // Verificar si existe un trabajador inactivo con este usuario
+      const trabajadorInactivo = await this.trabajadorRepository
+        .createQueryBuilder('trabajador')
+        .leftJoinAndSelect('trabajador.idUsuario', 'usuario')
+        .where('usuario.idUsuario = :userId', { userId: user.idUsuario })
+        .andWhere('trabajador.estaActivo = :activo', { activo: false })
+        .getOne();
+
+      if (trabajadorInactivo) {
+        throw new UnauthorizedException(
+          'Trabajador inactivo, no está autorizado para ingresar',
+        );
+      }
+
+      throw new UnauthorizedException(
+        'Usuario no asociado a estudiante ni trabajador',
+      );
     }
 
     const payload = {
@@ -73,8 +99,11 @@ export class AuthService {
       tipo,
       rol,
       entidadId, // ID del trabajador o estudiante
-      fullName: trabajador ? `${trabajador.nombre} ${trabajador.apellido}` :
-        estudiante ? `${estudiante.nombre} ${estudiante.apellido}` : user.usuario
+      fullName: trabajador
+        ? `${trabajador.nombre} ${trabajador.apellido}`
+        : estudiante
+          ? `${estudiante.nombre} ${estudiante.apellido}`
+          : user.usuario,
     };
 
     return {

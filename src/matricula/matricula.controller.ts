@@ -11,6 +11,10 @@ export class MatriculaController {
   @Post()
   @ApiOperation({ summary: 'Registrar una nueva matrícula para un estudiante' })
   async create(@Body() createMatriculaDto: CreateMatriculaDto) {
+    console.log('🔥 CONTROLLER - Datos recibidos:', JSON.stringify(createMatriculaDto, null, 2));
+    console.log('🔥 CONTROLLER - estudianteData:', createMatriculaDto.estudianteData);
+    console.log('🔥 CONTROLLER - contactosEmergencia:', createMatriculaDto.estudianteData?.contactosEmergencia);
+
     const data = await this.matriculaService.create(createMatriculaDto);
     return {
       success: true,
@@ -217,6 +221,6 @@ export class MatriculaController {
     description: 'Matrícula no encontrada',
   })
   remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.matriculaService.remove(id); 
+    return this.matriculaService.remove(id);
   }
 }

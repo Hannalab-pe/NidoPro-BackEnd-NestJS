@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { EstudianteService } from './estudiante.service';
 import { CreateEstudianteDto } from './dto/create-estudiante.dto';
 import { UpdateEstudianteDto } from './dto/update-estudiante.dto';
@@ -7,7 +15,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 @ApiTags('Estudiantes')
 @Controller('estudiante')
 export class EstudianteController {
-  constructor(private readonly estudianteService: EstudianteService) { }
+  constructor(private readonly estudianteService: EstudianteService) {}
 
   @Post()
   @ApiOperation({ summary: 'Registrar un nuevo estudiante' })
@@ -27,9 +35,21 @@ export class EstudianteController {
     return this.estudianteService.findOne(id);
   }
 
+  @Get('aula/:idAula')
+  @ApiOperation({
+    summary:
+      'Estudiantes por Aula - Obtener todos los estudiantes de un aula específica',
+  })
+  findEstudiantesPorAula(@Param('idAula') idAula: string) {
+    return this.estudianteService.findEstudiantesPorAula(idAula);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar información de un estudiante' })
-  update(@Param('id') id: string, @Body() updateEstudianteDto: UpdateEstudianteDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateEstudianteDto: UpdateEstudianteDto,
+  ) {
     return this.estudianteService.update(id, updateEstudianteDto);
   }
 

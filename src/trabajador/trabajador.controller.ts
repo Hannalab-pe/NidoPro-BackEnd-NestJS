@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { TrabajadorService } from './trabajador.service';
 import { CreateTrabajadorDto } from './dto/create-trabajador.dto';
 import { UpdateTrabajadorDto } from './dto/update-trabajador.dto';
@@ -7,10 +15,12 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 @ApiTags('Trabajadores')
 @Controller('trabajador')
 export class TrabajadorController {
-  constructor(private readonly trabajadorService: TrabajadorService) { }
+  constructor(private readonly trabajadorService: TrabajadorService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Registrar un nuevo trabajador (docente/administrativo)' })
+  @ApiOperation({
+    summary: 'Registrar un nuevo trabajador (docente/administrativo)',
+  })
   create(@Body() createTrabajadorDto: CreateTrabajadorDto) {
     return this.trabajadorService.create(createTrabajadorDto);
   }
@@ -27,9 +37,21 @@ export class TrabajadorController {
     return this.trabajadorService.findOne(id);
   }
 
+  @Get('aulas/:idTrabajador')
+  @ApiOperation({
+    summary:
+      'Aulas por Trabajador - Obtener todas las aulas asignadas a un trabajador específico',
+  })
+  findAulasPorTrabajador(@Param('idTrabajador') idTrabajador: string) {
+    return this.trabajadorService.findAulasPorTrabajador(idTrabajador);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar información de un trabajador' })
-  update(@Param('id') id: string, @Body() updateTrabajadorDto: UpdateTrabajadorDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateTrabajadorDto: UpdateTrabajadorDto,
+  ) {
     return this.trabajadorService.update(id, updateTrabajadorDto);
   }
 
