@@ -10,6 +10,35 @@ export class PensionService {
 
   constructor(@InjectRepository(Pension) private readonly pensionRepository: Repository<Pension>) { }
 
+  async findPensionesConGrados() {
+    return this.pensionRepository
+      .createQueryBuilder('pension')
+      .leftJoinAndSelect('pension.grados', 'grado')
+      .where('grado.estaActivo = :activo', { activo: true })
+      .getMany();
+  }
+
+  async verificarConfiguracionPensiones(): Promise<{
+    pensionesActivas: number;
+    gradosAsignados: number;
+    gradosSinPension: number;
+  }> {
+    const [pensionesActivas, gradosConPension, gradosSinPension] = await Promise.all([
+      this.pensionRepository.count(),
+      this.pensionRepository
+        .createQueryBuilder('pension')
+        .leftJoin('pension.grados', 'grado')
+        .where('grado.estaActivo = :activo', { activo: true })
+        .getCount(),
+      0
+    ]);
+
+    return {
+      pensionesActivas,
+      gradosAsignados: gradosConPension,
+      gradosSinPension
+    };
+  }
 
   async create(createPensionDto: CreatePensionDto): Promise<Pension> {
     const pensionData = {

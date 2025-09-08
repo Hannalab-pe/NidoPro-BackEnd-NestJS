@@ -27,13 +27,13 @@ export class PensionEstudiante {
     })
     idPensionEstudiante: string;
 
-    @Column("uuid", { name: "id_estudiante", unique: true })
+    @Column("uuid", { name: "id_estudiante" })
     idEstudiante: string;
 
-    @Column("integer", { name: "mes", unique: true })
+    @Column("integer", { name: "mes" })
     mes: number;
 
-    @Column("integer", { name: "anio", unique: true })
+    @Column("integer", { name: "anio" })
     anio: number;
 
     @Column("numeric", { name: "monto_pension", precision: 8, scale: 2 })

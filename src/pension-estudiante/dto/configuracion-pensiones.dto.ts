@@ -1,45 +1,57 @@
-import { IsNotEmpty, IsNumber, IsArray, IsOptional, IsObject } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsBoolean, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
+/**
+ * DTO para configurar la generación automática de pensiones por año escolar.
+ * Ya no necesita montos porque estos vienen de la relación Grado -> Pension en BD.
+ */
 export class ConfiguracionPensionesDto {
-    @ApiProperty({ description: 'Año escolar para generar pensiones' })
+    @ApiProperty({
+        description: 'Año escolar para generar pensiones',
+        example: 2024,
+        minimum: 2024
+    })
     @IsNotEmpty()
     @IsNumber()
+    @Min(2024)
     anioEscolar: number;
 
-    @ApiProperty({ description: 'Monto base de la pensión' })
-    @IsNotEmpty()
-    @IsNumber()
-    montoBase: number;
-
     @ApiProperty({
-        description: 'Montos específicos por grado',
-        example: { 'inicial-3': 300, 'inicial-4': 320, 'inicial-5': 350 }
-    })
-    @IsOptional()
-    @IsObject()
-    montoPorGrado?: { [grado: string]: number };
-
-    @ApiProperty({
-        description: 'Meses del año escolar (1-12)',
-        example: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    })
-    @IsOptional()
-    @IsArray()
-    mesesEscolares?: number[];
-
-    @ApiProperty({
-        description: 'Día del mes para vencimiento (1-31)',
-        default: 15
+        description: 'Día del mes para vencimiento personalizado (1-31). Si no se especifica, se usa el configurado en cada pensión por grado.',
+        example: 15,
+        required: false,
+        minimum: 1,
+        maximum: 31
     })
     @IsOptional()
     @IsNumber()
-    diaVencimiento?: number;
+    @Min(1)
+    @Max(31)
+    diaVencimientoPersonalizado?: number;
 
     @ApiProperty({
-        description: 'Descripción de la configuración',
+        description: 'Descripción de la generación de pensiones',
+        example: 'Generación automática de pensiones para el año escolar 2024',
         required: false
     })
     @IsOptional()
     descripcion?: string;
+
+    @ApiProperty({
+        description: 'Indica si se debe regenerar pensiones existentes (sobrescribir). Por defecto: false',
+        default: false,
+        required: false
+    })
+    @IsOptional()
+    @IsBoolean()
+    regenerarExistentes?: boolean;
+
+    @ApiProperty({
+        description: 'Aplicar descuentos por pago adelantado configurados en las pensiones por grado',
+        default: false,
+        required: false
+    })
+    @IsOptional()
+    @IsBoolean()
+    aplicarDescuentosPagoAdelantado?: boolean;
 }

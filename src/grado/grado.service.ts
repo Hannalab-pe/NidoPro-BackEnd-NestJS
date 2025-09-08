@@ -10,6 +10,47 @@ export class GradoService {
 
   constructor(@InjectRepository(Grado) private readonly gradoRepository: Repository<Grado>) { }
 
+  async findEstudiantesMatriculadosConPension(anioEscolar: number) {
+    return this.gradoRepository
+      .createQueryBuilder('grado')
+      .leftJoinAndSelect('grado.idPension', 'pension')
+      .leftJoinAndSelect('grado.matriculas', 'matricula')
+      .leftJoinAndSelect('matricula.estudiante', 'estudiante')
+      .leftJoinAndSelect('matricula.periodoEscolar', 'periodo')
+      .andWhere('EXTRACT(YEAR FROM matricula.fechaIngreso) = :anio', { anio: anioEscolar })
+      .andWhere('grado.estaActivo = :gradoActivo', { gradoActivo: true })
+      .andWhere('pension.idPension IS NOT NULL')
+      .select([
+        'estudiante.idEstudiante',
+        'estudiante.nombres',
+        'estudiante.apellidoPaterno',
+        'estudiante.apellidoMaterno',
+        'grado.idGrado',
+        'grado.grado',
+        'pension.idPension',
+        'pension.monto',
+        'pension.fechaVencimientoMensual',
+        'pension.moraDiaria',
+        'pension.descuentoPagoAdelantado'
+      ])
+      .getMany();
+  }
+
+  async verificarGradosConPensionConfigurada(): Promise<{
+    gradosSinPension: any[];
+    todosConfigurados: boolean;
+  }> {
+    const gradosSinPension = await this.gradoRepository
+      .createQueryBuilder('grado')
+      .where('grado.estaActivo = :activo', { activo: true })
+      .andWhere('grado.idPension IS NULL')
+      .getMany();
+
+    return {
+      gradosSinPension,
+      todosConfigurados: gradosSinPension.length === 0
+    };
+  }
 
   async create(createGradoDto: CreateGradoDto): Promise<Grado> {
     const gradoData = {
