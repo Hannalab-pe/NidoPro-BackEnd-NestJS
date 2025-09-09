@@ -21,7 +21,7 @@ export class EstudianteService {
     private readonly rolRepository: Repository<Rol>,
     private readonly usuarioService: UsuarioService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async create(
     createEstudianteDto: CreateEstudianteDto,
@@ -151,10 +151,17 @@ export class EstudianteService {
   }
 
   async findOne(id: string): Promise<Estudiante> {
-    const estudiante = await this.estudianteRepository.findOne({
-      where: { idEstudiante: id },
-      relations: ['idUsuario', 'contactosEmergencia'],
-    });
+    const estudiante = await this.estudianteRepository
+      .createQueryBuilder('estudiante')
+      .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
+      .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
+      .leftJoinAndSelect('estudiante.matriculas', 'matricula')
+      .leftJoinAndSelect('matricula.matriculaAulas', 'matriculaAula')
+      .leftJoinAndSelect('matriculaAula.aula', 'aula')
+      .leftJoinAndSelect('aula.idGrado', 'grado')
+      .where('estudiante.idEstudiante = :id', { id })
+      .getOne();
+
     if (!estudiante) {
       throw new NotFoundException(`Estudiante con ID ${id} no encontrado`);
     }
