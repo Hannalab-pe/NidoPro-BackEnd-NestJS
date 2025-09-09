@@ -156,7 +156,7 @@ export class EstudianteService {
       .leftJoinAndSelect('estudiante.idUsuario', 'usuario')
       .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
       .leftJoinAndSelect('estudiante.matriculas', 'matricula')
-      .leftJoinAndSelect('matricula.matriculaAulas', 'matriculaAula')
+      .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
       .leftJoinAndSelect('matriculaAula.aula', 'aula')
       .leftJoinAndSelect('aula.idGrado', 'grado')
       .where('estudiante.idEstudiante = :id', { id })
