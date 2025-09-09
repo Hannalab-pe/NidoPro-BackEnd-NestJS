@@ -22,7 +22,7 @@ import { UpdateTareaDto } from './dto/update-tarea.dto';
 @ApiTags('tareas')
 @Controller('tarea')
 export class TareaController {
-  constructor(private readonly tareaService: TareaService) {}
+  constructor(private readonly tareaService: TareaService) { }
 
   @Post()
   @ApiOperation({
@@ -32,15 +32,15 @@ export class TareaController {
   @ApiResponse({ status: 201, description: 'Tarea creada correctamente.' })
   @ApiResponse({ status: 400, description: 'Datos inválidos.' })
   @ApiResponse({ status: 404, description: 'Aula o trabajador no encontrado.' })
-  create(@Body() createTareaDto: CreateTareaDto) {
-    return this.tareaService.create(createTareaDto);
+  async create(@Body() createTareaDto: CreateTareaDto) {
+    return await this.tareaService.create(createTareaDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todas las tareas' })
   @ApiResponse({ status: 200, description: 'Tareas obtenidas correctamente.' })
-  findAll() {
-    return this.tareaService.findAll();
+  async findAll() {
+    return await this.tareaService.findAll();
   }
 
   @Get('estado/:estado')
@@ -50,8 +50,8 @@ export class TareaController {
     description: 'Estado de la tarea (pendiente, activa, cerrada)',
   })
   @ApiResponse({ status: 200, description: 'Tareas obtenidas correctamente.' })
-  findByEstado(@Param('estado') estado: string) {
-    return this.tareaService.findByEstado(estado);
+  async findByEstado(@Param('estado') estado: string) {
+    return await this.tareaService.findByEstado(estado);
   }
 
   @Get('trabajador/:idTrabajador')
@@ -62,8 +62,17 @@ export class TareaController {
     description: 'Tareas del trabajador obtenidas correctamente.',
   })
   @ApiResponse({ status: 404, description: 'Trabajador no encontrado.' })
-  findByTrabajador(@Param('idTrabajador') idTrabajador: string) {
-    return this.tareaService.findByTrabajador(idTrabajador);
+  async findByTrabajador(@Param('idTrabajador') idTrabajador: string) {
+    return await this.tareaService.findByTrabajador(idTrabajador);
+  }
+
+  @Get('estudiante/:idEstudiante')
+  @ApiOperation({ summary: 'Obtener tareas de un estudiante específico' })
+  @ApiParam({ name: 'idEstudiante', description: 'ID del estudiante' })
+  @ApiResponse({ status: 200, description: 'Tareas del estudiante obtenidas correctamente.', })
+  @ApiResponse({ status: 404, description: 'Estudiante no encontrado.' })
+  async findByEstudiante(@Param('idEstudiante') idEstudiante: string) {
+    return await this.tareaService.obtenerTareaPorEstudianteId(idEstudiante);
   }
 
   @Get('aula/:idAula')
@@ -73,8 +82,8 @@ export class TareaController {
     status: 200,
     description: 'Tareas del aula obtenidas correctamente.',
   })
-  findByAula(@Param('idAula') idAula: string) {
-    return this.tareaService.findByAula(idAula);
+  async findByAula(@Param('idAula') idAula: string) {
+    return await this.tareaService.findByAula(idAula);
   }
 
   @Get(':id')
@@ -82,8 +91,8 @@ export class TareaController {
   @ApiParam({ name: 'id', description: 'ID de la tarea' })
   @ApiResponse({ status: 200, description: 'Tarea obtenida correctamente.' })
   @ApiResponse({ status: 404, description: 'Tarea no encontrada.' })
-  findOne(@Param('id') id: string) {
-    return this.tareaService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.tareaService.findOne(id);
   }
 
   @Get(':id/estadisticas')
@@ -97,8 +106,8 @@ export class TareaController {
     description: 'Estadísticas obtenidas correctamente.',
   })
   @ApiResponse({ status: 404, description: 'Tarea no encontrada.' })
-  obtenerEstadisticas(@Param('id') id: string) {
-    return this.tareaService.obtenerEstadisticasTarea(id);
+  async obtenerEstadisticas(@Param('id') id: string) {
+    return await this.tareaService.obtenerEstadisticasTarea(id);
   }
 
   @Patch(':id')
@@ -111,8 +120,8 @@ export class TareaController {
     status: 409,
     description: 'Conflicto: No se puede editar tarea con entregas realizadas.',
   })
-  update(@Param('id') id: string, @Body() updateTareaDto: UpdateTareaDto) {
-    return this.tareaService.update(id, updateTareaDto);
+  async update(@Param('id') id: string, @Body() updateTareaDto: UpdateTareaDto) {
+    return await this.tareaService.update(id, updateTareaDto);
   }
 
   @Delete(':id')
@@ -125,7 +134,7 @@ export class TareaController {
     description:
       'Conflicto: No se puede eliminar tarea con entregas realizadas.',
   })
-  remove(@Param('id') id: string) {
-    return this.tareaService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.tareaService.remove(id);
   }
 }

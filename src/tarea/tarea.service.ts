@@ -461,6 +461,29 @@ export class TareaService {
     };
   }
 
+  async obtenerTareaPorEstudianteId(idEstudiante: string): Promise<{
+    success: boolean;
+    message: string;
+    tareas: Tarea[];
+  }> {
+    const tareas = await this.tareaRepository
+      .createQueryBuilder('tarea')
+      .leftJoinAndSelect('tarea.aula', 'aula')
+      .leftJoinAndSelect('aula.idGrado', 'grado')
+      .leftJoinAndSelect('tarea.idTrabajador', 'trabajador')
+      .leftJoinAndSelect('trabajador.idRol', 'rol')
+      .leftJoinAndSelect('tarea.tareaEntregas', 'tareaEntregas')
+      .leftJoinAndSelect('tareaEntregas.idEstudiante2', 'estudiante')
+      .where('tareaEntregas.idEstudiante = :idEstudiante', { idEstudiante })  
+      .orderBy('tarea.fechaAsignacion', 'DESC')
+      .getMany();
+    return {
+      success: true,
+      message: `Tareas del estudiante obtenidas correctamente`,
+      tareas,
+    };
+  }
+
   async obtenerEstadisticasTarea(id: string): Promise<{
     success: boolean;
     message: string;
