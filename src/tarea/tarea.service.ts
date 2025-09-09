@@ -11,7 +11,7 @@ import { UpdateTareaDto } from './dto/update-tarea.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Tarea } from './entities/tarea.entity';
 import { TareaEntrega } from '../tarea-entrega/entities/tarea-entrega.entity';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { AulaService } from '../aula/aula.service';
 import { TrabajadorService } from '../trabajador/trabajador.service';
 import { MatriculaAulaService } from '../matricula-aula/matricula-aula.service';
@@ -28,6 +28,146 @@ export class TareaService {
     private readonly matriculaAulaService: MatriculaAulaService,
     private readonly dataSource: DataSource,
   ) { }
+
+  async createNuevoOptimizado(createTarea: CreateTareaDto): Promise<any> {
+    return await this.dataSource.transaction(async (manager) => {
+      // 1. VALIDACIÓN COMBINADA
+      const validacionCompleta = await manager
+        .createQueryBuilder()
+        .select([
+          'aula.idAula as aulaId',
+          'aula.seccion as aulaSeccion',
+          'grado.grado as gradoNombre',
+          'trabajador.idTrabajador as trabajadorId',
+          'trabajador.nombre as trabajadorNombre',
+          'trabajador.apellido as trabajadorApellido',
+          'rol.nombre as rolNombre',
+          'asignacion.idAsignacionAula as asignacionId'
+        ])
+        .from('aula', 'aula')
+        .leftJoin('aula.idGrado', 'grado')
+        .leftJoin('trabajador', 'trabajador', 'trabajador.idTrabajador = :idTrabajador')
+        .leftJoin('trabajador.idRol', 'rol')
+        .leftJoin('asignacion_aula', 'asignacion',
+          'asignacion.idAula = aula.idAula AND asignacion.idTrabajador = trabajador.idTrabajador')
+        .where('aula.idAula = :idAula')
+        .setParameters({
+          idAula: createTarea.idAula,
+          idTrabajador: createTarea.idTrabajador
+        })
+        .getRawOne();
+
+      // 2. VALIDACIONES OPTIMIZADAS
+      const validaciones = new Map([
+        [!validacionCompleta?.aulaId, new NotFoundException('Aula no encontrada')],
+        [!validacionCompleta?.trabajadorId, new NotFoundException('Trabajador no encontrado')],
+        [validacionCompleta?.rolNombre !== 'DOCENTE', new BadRequestException('Solo los docentes pueden asignar tareas')],
+        [!validacionCompleta?.asignacionId, new BadRequestException('El docente no está asignado al aula')]
+      ]);
+
+      for (const [condicion, error] of validaciones) {
+        if (condicion) throw error;
+      }
+
+      // 3. VALIDAR FECHA
+      const fechaEntrega = new Date(createTarea.fechaEntrega);
+      const fechaActual = new Date();
+      fechaActual.setHours(0, 0, 0, 0);
+
+      if (fechaEntrega < fechaActual) {
+        throw new BadRequestException('La fecha de entrega no puede ser anterior a la fecha actual');
+      }
+
+      // 4. CREAR LA TAREA (usando manager)
+      const tarea = manager.create(Tarea, {
+        titulo: createTarea.titulo,
+        descripcion: createTarea.descripcion || null,
+        fechaEntrega: createTarea.fechaEntrega,
+        estado: createTarea.estado || 'pendiente',
+        aula: { idAula: createTarea.idAula },
+        idTrabajador: { idTrabajador: createTarea.idTrabajador },
+      });
+
+      const tareaGuardada = await manager.save(Tarea, tarea);
+
+      // 5. OBTENER ESTUDIANTES DEL AULA
+      const estudiantesAula = await this.matriculaAulaService.obtenerEstudiantesDelAula(createTarea.idAula);
+
+      // 6. EXTRAER IDS DE ESTUDIANTES
+      const idsEstudiantes = estudiantesAula.map(ea => ea.matricula.idEstudiante.idEstudiante);
+
+      // 7. VERIFICAR ENTREGAS EXISTENTES (usando manager)
+      const entregasExistentes = await manager.find(TareaEntrega, {
+        where: {
+          idTarea: tareaGuardada.idTarea,
+          idEstudiante: In(idsEstudiantes)
+        },
+        select: ['idEstudiante']
+      });
+
+      // 8. CREAR SET DE IDS EXISTENTES
+      const idsEntregasExistentes = new Set(entregasExistentes.map(e => e.idEstudiante));
+
+      // 9. FILTRAR ESTUDIANTES SIN ENTREGA
+      const estudiantesSinEntrega = estudiantesAula.filter(ea =>
+        !idsEntregasExistentes.has(ea.matricula.idEstudiante.idEstudiante)
+      );
+
+      // 10. CREAR ENTREGAS EN LOTE (usando manager)
+      const nuevasEntregas = estudiantesSinEntrega.map(ea =>
+        manager.create(TareaEntrega, {
+          idTarea: tareaGuardada.idTarea,
+          idEstudiante: ea.matricula.idEstudiante.idEstudiante,
+          estado: 'pendiente',
+          fechaEntrega: createTarea.fechaEntrega,
+        })
+      );
+
+      // 11. GUARDAR ENTREGAS (manejar array vacío)
+      const entregasGuardadas = nuevasEntregas.length > 0
+        ? await manager.save(TareaEntrega, nuevasEntregas)
+        : [];
+
+      // 12. CONSTRUIR RESPUESTA SIN CONSULTA ADICIONAL
+      const aulaInfo = {
+        idAula: validacionCompleta.aulaId,
+        seccion: validacionCompleta.aulaSeccion,
+        idGrado: validacionCompleta.gradoNombre ? {
+          grado: validacionCompleta.gradoNombre
+        } : null
+      };
+
+      const trabajadorInfo = {
+        idTrabajador: validacionCompleta.trabajadorId,
+        nombre: validacionCompleta.trabajadorNombre,
+        apellido: validacionCompleta.trabajadorApellido,
+        idRol: {
+          nombre: validacionCompleta.rolNombre
+        }
+      };
+
+      const tareaCompleta = {
+        ...tareaGuardada,
+        aula: aulaInfo,
+        idTrabajador: trabajadorInfo,
+        tareaEntregas: entregasGuardadas
+      };
+
+      // 13. MAPEAR ESTUDIANTES ASIGNADOS (CORREGIDO)
+      const estudiantesAsignados = estudiantesSinEntrega.map(ea => ({
+        idEstudiante: ea.matricula.idEstudiante.idEstudiante,
+        nombre: `${ea.matricula.idEstudiante.nombre} ${ea.matricula.idEstudiante.apellido}`,
+      }));
+
+      return {
+        success: true,
+        message: `Tarea "${createTarea.titulo}" creada y asignada a ${entregasGuardadas.length} estudiantes del aula ${validacionCompleta.aulaSeccion}`,
+        tarea: tareaCompleta,
+        entregasCreadas: entregasGuardadas.length,
+        estudiantesAsignados,
+      };
+    });
+  }
 
   async create(createTareaDto: CreateTareaDto): Promise<any> {
     return await this.dataSource.transaction(async (manager) => {
