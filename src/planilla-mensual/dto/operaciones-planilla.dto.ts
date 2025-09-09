@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsArray,
   IsDateString,
   IsOptional,
   IsString,
@@ -98,4 +99,40 @@ export class GenerarPlanillaConTrabajadoresDto {
     example: 'uuid-del-generador',
   })
   generadoPor: string;
+}
+
+export class AprobarPlanillasMasivasDto {
+  @ApiProperty({
+    description: 'IDs de las planillas a aprobar masivamente',
+    example: ['uuid-planilla-1', 'uuid-planilla-2', 'uuid-planilla-3'],
+    type: [String],
+  })
+  @IsArray({ message: 'Los IDs de planillas deben ser un array' })
+  @IsUUID(4, {
+    each: true,
+    message: 'Cada ID de planilla debe ser un UUID válido',
+  })
+  idsPlanillas: string[];
+
+  @ApiProperty({
+    description: 'ID del trabajador que aprueba las planillas',
+    example: 'uuid-del-trabajador-aprobador',
+  })
+  @IsUUID(4, {
+    message: 'El ID del trabajador aprobador debe ser un UUID válido',
+  })
+  aprobadoPor: string;
+
+  @ApiProperty({
+    description: 'Observaciones sobre la aprobación masiva',
+    example: 'Planillas aprobadas después de revisión masiva de cálculos',
+    required: false,
+    maxLength: 500,
+  })
+  @IsOptional()
+  @IsString({ message: 'Las observaciones deben ser texto' })
+  @Length(0, 500, {
+    message: 'Las observaciones no pueden exceder 500 caracteres',
+  })
+  observaciones?: string;
 }

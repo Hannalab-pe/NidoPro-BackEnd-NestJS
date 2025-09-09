@@ -14,6 +14,7 @@ import { CreatePlanillaMensualDto } from './dto/create-planilla-mensual.dto';
 import { UpdatePlanillaMensualDto } from './dto/update-planilla-mensual.dto';
 import {
   AprobarPlanillaMensualDto,
+  AprobarPlanillasMasivasDto,
   GenerarPlanillaConTrabajadoresDto,
 } from './dto/operaciones-planilla.dto';
 import { EstadoPlanilla } from 'src/enums/estado-planilla.enum';
@@ -57,13 +58,7 @@ export class PlanillaMensualController {
   @ApiResponse({ status: 200, description: 'Planillas procesadas masivamente con registro detallado' })
   @ApiResponse({ status: 400, description: 'Error en validación de datos' })
   @ApiResponse({ status: 404, description: 'Trabajador aprobador no encontrado' })
-  async aprobarMasivo(
-    @Body() data: {
-      idsPlanillas: string[];
-      aprobadoPor: string;
-      observaciones?: string;
-    },
-  ) {
+  async aprobarMasivo(@Body() data: AprobarPlanillasMasivasDto) {
     return await this.planillaMensualService.aprobarPlanillasMasivas(data.idsPlanillas, {
       aprobadoPor: data.aprobadoPor,
       observaciones: data.observaciones,
