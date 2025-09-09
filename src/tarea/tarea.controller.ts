@@ -6,14 +6,12 @@ import {
   Patch,
   Param,
   Delete,
-  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiParam,
-  ApiQuery,
 } from '@nestjs/swagger';
 import { TareaService } from './tarea.service';
 import { CreateTareaDto } from './dto/create-tarea.dto';
@@ -45,10 +43,7 @@ export class TareaController {
 
   @Get('estado/:estado')
   @ApiOperation({ summary: 'Obtener tareas por estado' })
-  @ApiParam({
-    name: 'estado',
-    description: 'Estado de la tarea (pendiente, activa, cerrada)',
-  })
+  @ApiParam({ name: 'estado', description: 'Estado de la tarea (pendiente, activa, cerrada)', })
   @ApiResponse({ status: 200, description: 'Tareas obtenidas correctamente.' })
   async findByEstado(@Param('estado') estado: string) {
     return await this.tareaService.findByEstado(estado);
@@ -78,10 +73,7 @@ export class TareaController {
   @Get('aula/:idAula')
   @ApiOperation({ summary: 'Obtener tareas de un aula específica' })
   @ApiParam({ name: 'idAula', description: 'ID del aula' })
-  @ApiResponse({
-    status: 200,
-    description: 'Tareas del aula obtenidas correctamente.',
-  })
+  @ApiResponse({ status: 200, description: 'Tareas del aula obtenidas correctamente.', })
   async findByAula(@Param('idAula') idAula: string) {
     return await this.tareaService.findByAula(idAula);
   }
@@ -96,15 +88,9 @@ export class TareaController {
   }
 
   @Get(':id/estadisticas')
-  @ApiOperation({
-    summary:
-      'Obtener estadísticas de una tarea (entregas realizadas, pendientes, etc.)',
-  })
+  @ApiOperation({ summary: 'Obtener estadísticas de una tarea (entregas realizadas, pendientes, etc.)' })
   @ApiParam({ name: 'id', description: 'ID de la tarea' })
-  @ApiResponse({
-    status: 200,
-    description: 'Estadísticas obtenidas correctamente.',
-  })
+  @ApiResponse({ status: 200, description: 'Estadísticas obtenidas correctamente.' })
   @ApiResponse({ status: 404, description: 'Tarea no encontrada.' })
   async obtenerEstadisticas(@Param('id') id: string) {
     return await this.tareaService.obtenerEstadisticasTarea(id);
@@ -116,10 +102,7 @@ export class TareaController {
   @ApiResponse({ status: 200, description: 'Tarea actualizada correctamente.' })
   @ApiResponse({ status: 400, description: 'Datos inválidos.' })
   @ApiResponse({ status: 404, description: 'Tarea no encontrada.' })
-  @ApiResponse({
-    status: 409,
-    description: 'Conflicto: No se puede editar tarea con entregas realizadas.',
-  })
+  @ApiResponse({ status: 409, description: 'Conflicto: No se puede editar tarea con entregas realizadas.' })
   async update(@Param('id') id: string, @Body() updateTareaDto: UpdateTareaDto) {
     return await this.tareaService.update(id, updateTareaDto);
   }
@@ -129,11 +112,7 @@ export class TareaController {
   @ApiParam({ name: 'id', description: 'ID de la tarea' })
   @ApiResponse({ status: 200, description: 'Tarea eliminada correctamente.' })
   @ApiResponse({ status: 404, description: 'Tarea no encontrada.' })
-  @ApiResponse({
-    status: 409,
-    description:
-      'Conflicto: No se puede eliminar tarea con entregas realizadas.',
-  })
+  @ApiResponse({ status: 409, description: 'Conflicto: No se puede eliminar tarea con entregas realizadas.' })
   async remove(@Param('id') id: string) {
     return await this.tareaService.remove(id);
   }
