@@ -23,7 +23,7 @@ export class TrabajadorService {
     private readonly rolRepository: Repository<Rol>,
     private readonly usuarioService: UsuarioService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async create(
     createTrabajadorDto: CreateTrabajadorDto,
@@ -138,7 +138,32 @@ export class TrabajadorService {
   async findOne(id: string): Promise<Trabajador> {
     const trabajador = await this.trabajadorRepository.findOne({
       where: { idTrabajador: id, estaActivo: true },
-      relations: ['idRol', 'idUsuario'],
+      relations: [
+        // Relaciones principales
+        'idRol',
+        'idUsuario',
+        // Asignaciones
+        'asignacionAulas',
+        'asignacionAulas.idAula',
+        'asignacionAulas.idAula.idGrado',
+        'asignacionCursos',
+        'asignacionCursos.idCurso',
+        // Contratos y seguros
+        'contratoTrabajadors3', // Como trabajador
+        'seguroTrabajadors2', // Como trabajador asegurado
+        'sueldoTrabajadors2', // Como trabajador con sueldo
+        // Cronogramas y tareas
+        'cronogramas',
+        'tareas',
+        // Planillas y detalles
+        'detallePlanillas',
+        'programacionMensuals',
+        // Evaluaciones y observaciones como docente
+        'evaluacionDocenteBimestrals2',
+        'observacionDocentes2',
+        // Informes
+        'informes',
+      ],
     });
     if (!trabajador) {
       throw new NotFoundException(`Trabajador con ID ${id} no encontrado`);

@@ -27,7 +27,7 @@ export class TareaService {
     private readonly trabajadorService: TrabajadorService,
     private readonly matriculaAulaService: MatriculaAulaService,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
   async create(createTareaDto: CreateTareaDto): Promise<any> {
     return await this.dataSource.transaction(async (manager) => {
@@ -50,6 +50,12 @@ export class TareaService {
         throw new BadRequestException(
           'Solo los docentes pueden asignar tareas',
         );
+      }
+
+      //VALIDAR QUE EL DOCENTE SEA DEL MISMO AULA PARA QUE ASIGNE LA TAREA
+      const asignaciones = await this.aulaService.getAsignacionesDeAula(aula.idAula);
+      if (!asignaciones.some(asignacion => asignacion.idTrabajador.idTrabajador === trabajador.idTrabajador)) {
+        throw new BadRequestException('El docente no está asignado al aula');
       }
 
       // 4. VALIDAR FECHA DE ENTREGA
@@ -83,15 +89,26 @@ export class TareaService {
       // 7. CREAR ENTREGAS AUTOMÁTICAMENTE PARA CADA ESTUDIANTE
       const entregasCreadas: TareaEntrega[] = [];
       for (const estudianteAula of estudiantesAula) {
-        const tareaEntrega = manager.create(TareaEntrega, {
-          idTarea: tareaGuardada.idTarea,
-          idEstudiante: estudianteAula.matricula.idEstudiante.idEstudiante,
-          estado: 'pendiente',
-          fechaEntrega: createTareaDto.fechaEntrega,
+        // Verificar si ya existe una entrega para este estudiante y esta tarea
+        const entregaExistente = await manager.findOne(TareaEntrega, {
+          where: {
+            idTarea: tareaGuardada.idTarea,
+            idEstudiante: estudianteAula.matricula.idEstudiante.idEstudiante,
+          },
         });
 
-        const entregaGuardada = await manager.save(TareaEntrega, tareaEntrega);
-        entregasCreadas.push(entregaGuardada);
+        // Solo crear la entrega si no existe
+        if (!entregaExistente) {
+          const tareaEntrega = manager.create(TareaEntrega, {
+            idTarea: tareaGuardada.idTarea,
+            idEstudiante: estudianteAula.matricula.idEstudiante.idEstudiante,
+            estado: 'pendiente',
+            fechaEntrega: createTareaDto.fechaEntrega,
+          });
+
+          const entregaGuardada = await manager.save(TareaEntrega, tareaEntrega);
+          entregasCreadas.push(entregaGuardada);
+        }
       }
 
       // 8. CARGAR TAREA COMPLETA CON RELACIONES
@@ -135,12 +152,30 @@ export class TareaService {
     });
   }
 
-  async findByAula(idAula: string): Promise<Tarea[]> {
-    return await this.tareaRepository.find({
-      where: { aula: { idAula } },
-      relations: ['aula', 'idTrabajador', 'tareaEntregas'],
-      order: { fechaAsignacion: 'DESC' },
-    });
+  async findByAula(idAula: string): Promise<{
+    success: boolean;
+    message: string;
+    tareas: Tarea[];
+  }> {
+    // Verificar que el aula existe
+    const aula = await this.aulaService.findOne(idAula);
+    if (!aula) {
+      throw new NotFoundException('Aula no encontrada');
+    }
+
+    const tareas = await this.tareaRepository
+      .createQueryBuilder('tarea')
+      .leftJoinAndSelect('tarea.aula', 'aula')
+      .leftJoinAndSelect('aula.idGrado', 'grado')
+      .where('aula.idAula = :aulaId', { aulaId: aula.idAula })
+      .orderBy('tarea.fechaAsignacion', 'DESC')
+      .getMany();
+
+    return {
+      success: true,
+      message: `Tareas del aula ${aula.seccion}${aula.idGrado ? ` - ${aula.idGrado.grado}` : ''} obtenidas correctamente`,
+      tareas,
+    };
   }
 
   async findAll(): Promise<{
@@ -407,18 +442,17 @@ export class TareaService {
       throw new NotFoundException('Trabajador no encontrado');
     }
 
-    const tareas = await this.tareaRepository.find({
-      where: { idTrabajador: { idTrabajador } },
-      relations: [
-        'aula',
-        'aula.idGrado',
-        'idTrabajador',
-        'idTrabajador.idRol',
-        'tareaEntregas',
-        'tareaEntregas.idEstudiante2',
-      ],
-      order: { fechaAsignacion: 'DESC' },
-    });
+    const tareas = await this.tareaRepository
+      .createQueryBuilder('tarea')
+      .leftJoinAndSelect('tarea.aula', 'aula')
+      .leftJoinAndSelect('aula.idGrado', 'grado')
+      .leftJoinAndSelect('tarea.idTrabajador', 'trabajador')
+      .leftJoinAndSelect('trabajador.idRol', 'rol')
+      .leftJoinAndSelect('tarea.tareaEntregas', 'tareaEntregas')
+      .leftJoinAndSelect('tareaEntregas.idEstudiante2', 'estudiante')
+      .where('tarea.idTrabajador = :trabajadorId', { trabajadorId: trabajador.idTrabajador })
+      .orderBy('tarea.fechaAsignacion', 'DESC')
+      .getMany();
 
     return {
       success: true,

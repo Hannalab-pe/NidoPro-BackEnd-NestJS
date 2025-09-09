@@ -4,6 +4,7 @@ import { UpdateAulaDto } from './dto/update-aula.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Aula } from './entities/aula.entity';
 import { Repository } from 'typeorm';
+import { AsignacionAula } from 'src/asignacion-aula/entities/asignacion-aula.entity';
 
 @Injectable()
 export class AulaService {
@@ -70,6 +71,17 @@ export class AulaService {
 
     await this.aulaRepository.update({ idAula: id }, updateData);
     return this.findOne(id);
+  }
+
+  async getAsignacionesDeAula(idAula: string): Promise<AsignacionAula[]> {
+    const aula = await this.aulaRepository.findOne({
+      where: { idAula: idAula },
+      relations: ['asignacionAulas', 'asignacionAulas.idTrabajador'],
+    });
+    if (!aula) {
+      throw new Error(`Aula with id ${idAula} not found`);
+    }
+    return aula.asignacionAulas;
   }
 
   async getAulasDisponiblesConDetalles(idGrado: string): Promise<any[]> {

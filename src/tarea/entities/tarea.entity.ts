@@ -49,10 +49,7 @@ export class Tarea {
     notas: Nota[];
 
     @ManyToOne(() => Aula, (aula) => aula.tareas, { onDelete: "CASCADE" })
-    @JoinColumn([
-        { name: "id_aula", referencedColumnName: "idAula" },
-        { name: "id_aula", referencedColumnName: "idAula" },
-    ])
+    @JoinColumn([{ name: "id_aula", referencedColumnName: "idAula" }])
     aula: Aula;
 
     @ManyToOne(() => Trabajador, (trabajador) => trabajador.tareas, {
