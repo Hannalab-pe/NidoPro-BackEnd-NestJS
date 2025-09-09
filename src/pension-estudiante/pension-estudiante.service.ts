@@ -5,6 +5,7 @@ import { CreatePensionEstudianteDto } from './dto/create-pension-estudiante.dto'
 import { UpdatePensionEstudianteDto } from './dto/update-pension-estudiante.dto';
 import { UploadVoucherDto } from './dto/upload-voucher.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
+import { VerifyPaymentMasivoDto } from './dto/verify-payment-masivo.dto';
 import { FilterPensionDto } from './dto/filter-pension.dto';
 import { ConfiguracionPensionesDto } from './dto/configuracion-pensiones.dto';
 import { PensionEstudiante } from './entities/pension-estudiante.entity';
@@ -664,6 +665,17 @@ export class PensionEstudianteService {
     pension.estadoPension = verifyData.estadoPension;
     pension.observaciones = verifyData.observaciones;
 
+    // Si se APRUEBA el pago (pasa a PAGADO), establecer fecha_pago
+    if (verifyData.estadoPension === 'PAGADO') {
+      if (!pension.fechaPago) {
+        pension.fechaPago = new Date().toISOString().split('T')[0]; // Fecha actual
+      }
+      // Si no hay monto pagado, usar el monto total
+      if (!pension.montoPagado || parseFloat(pension.montoPagado) === 0) {
+        pension.montoPagado = pension.montoTotal;
+      }
+    }
+
     // Si se rechaza el pago, limpiar datos del voucher
     if (verifyData.estadoPension === 'PENDIENTE' && verifyData.motivoRechazo) {
       pension.comprobanteUrl = null;
@@ -677,31 +689,148 @@ export class PensionEstudianteService {
 
     // 🔥 NUEVO: Cuando se APRUEBA el pago (pasa a PAGADO), crear automáticamente el ingreso en Caja Simple
     if (verifyData.estadoPension === 'PAGADO' && estadoAnterior !== 'PAGADO') {
-      try {
-        // Crear el ingreso por pensión automáticamente usando el servicio inyectado
-        await this.cajaSimpleService.crearIngresoPorPension({
-          idEstudiante: pension.idEstudiante,
-          idPensionRelacionada: pension.idPensionEstudiante,
-          monto: parseFloat(pension.montoPagado || pension.montoTotal),
-          metodoPago: pension.metodoPago || 'NO_ESPECIFICADO',
-          numeroComprobante: pension.numeroComprobante || undefined,
-          registradoPor: verificadoPorId,
-          observaciones: `INGRESO AUTOMÁTICO - Pago aprobado: ${pension.observaciones || 'Sin observaciones'}`
-        });
+      // Validar que el verificadoPorId sea un UUID válido antes de crear ingreso automático
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-        console.log(`💰 INGRESO AUTOMÁTICO CREADO - Pensión ${pensionId} → Caja Simple`);
+      if (uuidRegex.test(verificadoPorId)) {
+        try {
+          // Crear el ingreso por pensión automáticamente usando el servicio inyectado
+          await this.cajaSimpleService.crearIngresoPorPension({
+            idEstudiante: pension.idEstudiante,
+            idPensionRelacionada: pension.idPensionEstudiante,
+            monto: parseFloat(pension.montoPagado || pension.montoTotal),
+            metodoPago: pension.metodoPago || 'NO_ESPECIFICADO',
+            numeroComprobante: pension.numeroComprobante || undefined,
+            registradoPor: verificadoPorId,
+            observaciones: `INGRESO AUTOMÁTICO - Pago aprobado: ${pension.observaciones || 'Sin observaciones'}`
+          });
 
-        // Actualizar observaciones para indicar que se creó el ingreso
-        pension.observaciones = `${pension.observaciones} | ✅ INGRESO REGISTRADO EN CAJA SIMPLE`;
+          console.log(`💰 INGRESO AUTOMÁTICO CREADO - Pensión ${pensionId} → Caja Simple`);
 
-      } catch (error) {
-        console.error(`❌ Error al crear ingreso automático para pensión ${pensionId}:`, error.message);
-        // No fallar la verificación por esto, solo registrar el error
-        pension.observaciones = `${pension.observaciones} | ⚠️ ERROR AL REGISTRAR EN CAJA SIMPLE: ${error.message}`;
+          // Actualizar observaciones para indicar que se creó el ingreso
+          pension.observaciones = `${pension.observaciones} | ✅ INGRESO REGISTRADO EN CAJA SIMPLE`;
+
+        } catch (error) {
+          console.error(`❌ Error al crear ingreso automático para pensión ${pensionId}:`, error.message);
+          // No fallar la verificación por esto, solo registrar el error
+          pension.observaciones = `${pension.observaciones} | ⚠️ ERROR AL REGISTRAR EN CAJA SIMPLE: ${error.message}`;
+        }
+      } else {
+        console.warn(`⚠️ Ingreso automático omitido para pensión ${pensionId}: ID de verificador no válido (${verificadoPorId})`);
+        pension.observaciones = `${pension.observaciones} | ⚠️ INGRESO AUTOMÁTICO OMITIDO: ID verificador no válido`;
       }
     }
 
     return await this.pensionRepository.save(pension);
+  }
+
+  // 5.1. VERIFICAR PAGOS MASIVOS (Para admin) - Optimizado con transacciones
+  async verifyPaymentMasivo(verifyData: VerifyPaymentMasivoDto, verificadoPorId: string) {
+    return await this.pensionRepository.manager.transaction(async manager => {
+      const { idsPensiones, estadoPension, observaciones, motivoRechazo } = verifyData;
+
+      // Obtener todas las pensiones a verificar
+      const pensiones = await manager.findBy(PensionEstudiante, {
+        idPensionEstudiante: In(idsPensiones)
+      });
+
+      if (pensiones.length !== idsPensiones.length) {
+        const encontrados = pensiones.map(p => p.idPensionEstudiante);
+        const noEncontrados = idsPensiones.filter(id => !encontrados.includes(id));
+        throw new NotFoundException(`Pensiones no encontradas: ${noEncontrados.join(', ')}`);
+      }
+
+      const resultados = {
+        totalProcesadas: pensiones.length,
+        exitosas: 0,
+        errores: 0,
+        detalles: [] as any[]
+      };
+
+      // Procesar cada pensión
+      for (const pension of pensiones) {
+        try {
+          const estadoAnterior = pension.estadoPension;
+          pension.estadoPension = estadoPension;
+          pension.observaciones = observaciones;
+
+          // Si se APRUEBA el pago (pasa a PAGADO), establecer fecha_pago
+          if (estadoPension === 'PAGADO') {
+            if (!pension.fechaPago) {
+              pension.fechaPago = new Date().toISOString().split('T')[0]; // Fecha actual
+            }
+            // Si no hay monto pagado, usar el monto total
+            if (!pension.montoPagado || parseFloat(pension.montoPagado) === 0) {
+              pension.montoPagado = pension.montoTotal;
+            }
+          }
+
+          // Si se rechaza el pago, limpiar datos del voucher
+          if (estadoPension === 'PENDIENTE' && motivoRechazo) {
+            pension.comprobanteUrl = null;
+            pension.numeroComprobante = null;
+            pension.fechaPago = null;
+            pension.montoPagado = null;
+            pension.observaciones = `RECHAZADO MASIVO: ${motivoRechazo}`;
+          }
+
+          pension.actualizadoEn = new Date();
+
+          // Crear ingreso automático en Caja Simple si se aprueba
+          if (estadoPension === 'PAGADO' && estadoAnterior !== 'PAGADO') {
+            // Validar que el verificadoPorId sea un UUID válido antes de crear ingreso automático
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+            if (uuidRegex.test(verificadoPorId)) {
+              try {
+                await this.cajaSimpleService.crearIngresoPorPension({
+                  idEstudiante: pension.idEstudiante,
+                  idPensionRelacionada: pension.idPensionEstudiante,
+                  monto: parseFloat(pension.montoPagado || pension.montoTotal),
+                  metodoPago: pension.metodoPago || 'NO_ESPECIFICADO',
+                  numeroComprobante: pension.numeroComprobante || undefined,
+                  registradoPor: verificadoPorId,
+                  observaciones: `INGRESO AUTOMÁTICO MASIVO - ${observaciones}`
+                });
+
+                pension.observaciones = `${pension.observaciones} | ✅ INGRESO REGISTRADO EN CAJA SIMPLE`;
+              } catch (error) {
+                console.error(`❌ Error en ingreso automático para pensión ${pension.idPensionEstudiante}:`, error.message);
+                pension.observaciones = `${pension.observaciones} | ⚠️ ERROR AL REGISTRAR EN CAJA SIMPLE: ${error.message}`;
+              }
+            } else {
+              console.warn(`⚠️ Ingreso automático omitido para pensión ${pension.idPensionEstudiante}: ID de verificador no válido (${verificadoPorId})`);
+              pension.observaciones = `${pension.observaciones} | ⚠️ INGRESO AUTOMÁTICO OMITIDO: ID verificador no válido`;
+            }
+          }
+
+          await manager.save(PensionEstudiante, pension);
+
+          resultados.exitosas++;
+          resultados.detalles.push({
+            idPension: pension.idPensionEstudiante,
+            estado: 'EXITOSO',
+            estadoAnterior,
+            estadoNuevo: estadoPension,
+            mensaje: 'Verificación procesada correctamente'
+          });
+
+        } catch (error) {
+          resultados.errores++;
+          resultados.detalles.push({
+            idPension: pension.idPensionEstudiante,
+            estado: 'ERROR',
+            mensaje: error.message
+          });
+        }
+      }
+
+      return {
+        success: true,
+        message: `Verificación masiva completada: ${resultados.exitosas} exitosas, ${resultados.errores} errores`,
+        ...resultados
+      };
+    });
   }
 
   // 6. VER PAGOS PENDIENTES DE VERIFICACIÓN (Para admin)

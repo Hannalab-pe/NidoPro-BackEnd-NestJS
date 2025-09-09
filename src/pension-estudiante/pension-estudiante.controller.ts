@@ -18,6 +18,7 @@ import { CreatePensionEstudianteDto } from './dto/create-pension-estudiante.dto'
 import { UpdatePensionEstudianteDto } from './dto/update-pension-estudiante.dto';
 import { UploadVoucherDto } from './dto/upload-voucher.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
+import { VerifyPaymentMasivoDto } from './dto/verify-payment-masivo.dto';
 import { FilterPensionDto } from './dto/filter-pension.dto';
 import { ConfiguracionPensionesDto } from './dto/configuracion-pensiones.dto';
 
@@ -116,10 +117,20 @@ export class PensionEstudianteController {
     @Param('id', ParseUUIDPipe) pensionId: string,
     @Body() verifyData: VerifyPaymentDto
   ) {
-    // El ID del verificador debería venir del JWT del usuario autenticado
-    const verificadoPorId = 'temp-trabajador-id'; // Temporal
+    return this.pensionEstudianteService.verifyPayment(pensionId, verifyData, verifyData.registradoPor);
+  }
 
-    return this.pensionEstudianteService.verifyPayment(pensionId, verifyData, verificadoPorId);
+  // 6.1. VERIFICAR PAGOS MASIVOS (Para admin)
+  @Patch('verify-masivo')
+  @ApiOperation({
+    summary: 'Verificar o rechazar múltiples pagos de forma masiva',
+    description: 'Permite verificar múltiples pensiones simultáneamente con el mismo estado y observaciones'
+  })
+  @ApiResponse({ status: 200, description: 'Pagos verificados masivamente con registro detallado' })
+  @ApiResponse({ status: 400, description: 'Error en validación de datos' })
+  @ApiResponse({ status: 404, description: 'Algunas pensiones no encontradas' })
+  verifyPaymentMasivo(@Body() verifyData: VerifyPaymentMasivoDto) {
+    return this.pensionEstudianteService.verifyPaymentMasivo(verifyData, verifyData.registradoPor);
   }
 
   // 7. MARCAR PENSIONES VENCIDAS (Cron job o admin)

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsOptional, IsIn } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsIn, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class VerifyPaymentDto {
@@ -20,4 +20,13 @@ export class VerifyPaymentDto {
     @IsOptional()
     @IsString()
     motivoRechazo?: string;
+
+    @ApiProperty({
+        description: 'ID del trabajador que registra la verificación',
+        example: 'uuid-del-trabajador-verificador'
+    })
+    @IsUUID(4, {
+        message: 'El ID del registrador debe ser un UUID válido',
+    })
+    registradoPor: string;
 }
