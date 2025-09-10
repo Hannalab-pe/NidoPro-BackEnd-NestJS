@@ -24,7 +24,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('Caja Simple - Gestión Financiera')
 @Controller('caja-simple')
-@UseGuards(JwtAuthGuard)
 export class CajaSimpleController {
     constructor(private readonly cajaSimpleService: CajaSimpleService) { }
 
