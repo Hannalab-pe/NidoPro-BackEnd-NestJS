@@ -99,6 +99,7 @@ export class AuthService {
       tipo,
       rol,
       entidadId, // ID del trabajador o estudiante
+      cambioContrasena: user.cambioContrasena || false, // Incluir estado de cambio de contraseña
       fullName: trabajador
         ? `${trabajador.nombre} ${trabajador.apellido}`
         : estudiante
