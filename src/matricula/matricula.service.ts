@@ -145,7 +145,6 @@ export class MatriculaService {
         if (
           !createMatriculaDto.estudianteData.nombre ||
           !createMatriculaDto.estudianteData.apellido ||
-          !createMatriculaDto.estudianteData.idRol ||
           !createMatriculaDto.estudianteData.nroDocumento
         ) {
           throw new Error(
@@ -162,7 +161,7 @@ export class MatriculaService {
           nroDocumento: createMatriculaDto.estudianteData.nroDocumento,
           observaciones:
             createMatriculaDto.estudianteData.observaciones || null,
-          idRol: createMatriculaDto.estudianteData.idRol,
+          idRol: '35225955-5aeb-4df0-8014-1cdfbce9b41e',  // ID fijo para "estudiante"
           imagen_estudiante:
             createMatriculaDto.estudianteData.imagen_estudiante || null,
         };
