@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { CreateMatriculaDto } from './dto/create-matricula.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Matricula } from './entities/matricula.entity';
@@ -273,7 +273,7 @@ export class MatriculaService {
 
       const matriculaExistente = await manager.findOne(Matricula, {
         where: {
-          idEstudiante: { idEstudiante: estudiante.idEstudiante },
+          idEstudiante: estudiante.idEstudiante ,
           anioEscolar: anioEscolarActual,
         },
         relations: ['matriculaAula', 'matriculaAula.aula'],
@@ -283,7 +283,7 @@ export class MatriculaService {
         const aulaInfo = matriculaExistente.matriculaAula?.aula
           ? ` en el aula sección ${matriculaExistente.matriculaAula.aula.seccion}`
           : '';
-        throw new Error(
+        throw new ConflictException(
           `El estudiante ${estudiante.nombre} ${estudiante.apellido} ya está matriculado en el año escolar ${anioEscolarActual}${aulaInfo}. No se puede registrar dos veces en el mismo año.`,
         );
       }
