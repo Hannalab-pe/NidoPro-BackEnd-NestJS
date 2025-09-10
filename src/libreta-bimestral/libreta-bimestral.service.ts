@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateLibretaBimestralDto } from './dto/create-libreta-bimestral.dto';
@@ -18,13 +18,18 @@ export class LibretaBimestralService {
 
   // Generar libreta bimestral automáticamente
   async generarLibretaBimestral(idEstudiante: string, idBimestre: string, idAula: string): Promise<LibretaBimestral> {
+    // Validar parámetros
+    if (!idEstudiante || !idBimestre || !idAula) {
+      throw new BadRequestException('Todos los parámetros son requeridos: idEstudiante, idBimestre, idAula');
+    }
+
     // Verificar si ya existe una libreta para este estudiante y bimestre
     const libretaExistente = await this.libretaBimestralRepository.findOne({
       where: { idEstudiante, idBimestre }
     });
 
     if (libretaExistente) {
-      throw new Error('Ya existe una libreta bimestral para este estudiante en este bimestre');
+      throw new BadRequestException('Ya existe una libreta bimestral para este estudiante en este bimestre. Use la función de recalcular si desea actualizarla.');
     }
 
     // Obtener todas las notas del estudiante en el bimestre
@@ -33,26 +38,49 @@ export class LibretaBimestralService {
         idEstudiante,
         idBimestre
       },
-      relations: ['idEvaluacion2', 'idTarea']
+      relations: ['idEvaluacion2', 'idTarea', 'idBimestre2']
     });
 
+    console.log(`Notas encontradas para estudiante ${idEstudiante} en bimestre ${idBimestre}:`, notas.length);
+
     if (notas.length === 0) {
-      throw new Error('No se encontraron notas para generar la libreta bimestral');
+      // En lugar de lanzar error, crear libreta con valores por defecto
+      console.log('No se encontraron notas. Creando libreta con valores por defecto.');
+
+      const libretaDefecto = this.libretaBimestralRepository.create({
+        idEstudiante,
+        idBimestre,
+        idAula: { idAula } as any,
+        promedioEvaluaciones: '0.00',
+        promedioTareas: '0.00',
+        promedioFinal: '0.00',
+        calificacionFinal: 'C',
+        conducta: 'A',
+        fechaGeneracion: new Date().toISOString().split('T')[0],
+        observacionesAcademicas: 'No se han registrado evaluaciones para este bimestre. Libreta pendiente de completar.',
+        observacionesConducta: 'Sin observaciones registradas.'
+      });
+
+      return await this.libretaBimestralRepository.save(libretaDefecto);
     }
 
     // Separar notas por tipo (evaluaciones y tareas)
     const notasEvaluaciones = notas.filter(nota => nota.idEvaluacion2 !== null);
     const notasTareas = notas.filter(nota => nota.idTarea !== null);
 
+    console.log(`Notas de evaluaciones: ${notasEvaluaciones.length}, Notas de tareas: ${notasTareas.length}`);
+
     // Calcular promedios
     const promedioEvaluaciones = this.calcularPromedioCalificaciones(notasEvaluaciones);
     const promedioTareas = this.calcularPromedioCalificaciones(notasTareas);
 
-    // Calcular promedio final (peso: 70% evaluaciones, 30% tareas)
-    const promedioFinal = this.calcularPromedioFinal(promedioEvaluaciones, promedioTareas);
+    // Calcular promedio final con validación
+    const promedioFinal = this.calcularPromedioFinal(promedioEvaluaciones, promedioTareas, notasEvaluaciones.length, notasTareas.length);
 
     // Convertir promedio final a calificación literal
     const calificacionFinal = CalificacionKinderHelper.numeroACalificacion(promedioFinal);
+
+    console.log(`Promedios calculados - Evaluaciones: ${promedioEvaluaciones}, Tareas: ${promedioTareas}, Final: ${promedioFinal}, Calificación: ${calificacionFinal}`);
 
     // Crear la libreta bimestral
     const nuevaLibreta = this.libretaBimestralRepository.create({
@@ -63,14 +91,14 @@ export class LibretaBimestralService {
       promedioTareas: promedioTareas.toFixed(2),
       promedioFinal: promedioFinal.toFixed(2),
       calificacionFinal,
+      conducta: 'A', // Valor por defecto
       fechaGeneracion: new Date().toISOString().split('T')[0],
-      observacionesAcademicas: this.generarObservacionesAcademicas(calificacionFinal, notas.length)
+      observacionesAcademicas: this.generarObservacionesAcademicas(calificacionFinal, notas.length, notasEvaluaciones.length, notasTareas.length),
+      observacionesConducta: 'Sin observaciones registradas.'
     });
 
     return await this.libretaBimestralRepository.save(nuevaLibreta);
-  }
-
-  // Calcular promedio de calificaciones A, B, C, AD
+  }  // Calcular promedio de calificaciones A, B, C, AD
   private calcularPromedioCalificaciones(notas: Nota[]): number {
     if (notas.length === 0) return 0;
 
@@ -83,44 +111,91 @@ export class LibretaBimestralService {
     return totalPuntos / notas.length;
   }
 
-  // Convertir puntaje de string a número usando la lógica de kinder
+  // Convertir puntaje de string a número usando la lógica de kinder (mejorado)
   private convertirPuntajeANumero(puntaje: string): number {
-    // Si el puntaje ya es un número, verificar si está en escala 0-20 y convertir
-    if (!isNaN(Number(puntaje))) {
-      const puntos = Number(puntaje);
-      if (puntos >= 18) return CalificacionKinderHelper.calificacionANumero('AD');
-      if (puntos >= 14) return CalificacionKinderHelper.calificacionANumero('A');
-      if (puntos >= 11) return CalificacionKinderHelper.calificacionANumero('B');
-      return CalificacionKinderHelper.calificacionANumero('C');
+    if (!puntaje) return 0;
+
+    // Limpiar el puntaje (remover espacios y convertir a mayúsculas)
+    const puntajeLimpio = puntaje.toString().trim().toUpperCase();
+
+    // Si es directamente una calificación de kinder (A, B, C, AD)
+    if (['A', 'B', 'C', 'AD'].includes(puntajeLimpio)) {
+      return CalificacionKinderHelper.calificacionANumero(puntajeLimpio);
     }
 
-    // Si es una letra, usar el helper
-    return CalificacionKinderHelper.calificacionANumero(puntaje);
+    // Si el puntaje es numérico, convertir según rangos
+    if (!isNaN(Number(puntajeLimpio))) {
+      const puntos = Number(puntajeLimpio);
+
+      // Verificar si está en escala 0-20 y convertir a kinder
+      if (puntos >= 0 && puntos <= 20) {
+        if (puntos >= 18) return CalificacionKinderHelper.calificacionANumero('AD');
+        if (puntos >= 14) return CalificacionKinderHelper.calificacionANumero('A');
+        if (puntos >= 11) return CalificacionKinderHelper.calificacionANumero('B');
+        return CalificacionKinderHelper.calificacionANumero('C');
+      }
+
+      // Si está en escala 0-4 (ya en formato kinder numérico)
+      if (puntos >= 0 && puntos <= 4) {
+        return puntos;
+      }
+    }
+
+    // Si no se puede convertir, retornar valor mínimo
+    console.warn(`No se pudo convertir el puntaje: ${puntaje}. Usando valor por defecto.`);
+    return CalificacionKinderHelper.calificacionANumero('C');
   }
 
-  // Calcular promedio final con pesos
-  private calcularPromedioFinal(promedioEvaluaciones: number, promedioTareas: number): number {
-    const pesoEvaluaciones = 0.7; // 70%
-    const pesoTareas = 0.3; // 30%
+  // Calcular promedio final con pesos y validaciones mejoradas
+  private calcularPromedioFinal(
+    promedioEvaluaciones: number,
+    promedioTareas: number,
+    cantidadEvaluaciones: number = 0,
+    cantidadTareas: number = 0
+  ): number {
+    // Si no hay evaluaciones ni tareas
+    if (cantidadEvaluaciones === 0 && cantidadTareas === 0) {
+      return 0;
+    }
+
+    // Si solo hay evaluaciones
+    if (cantidadEvaluaciones > 0 && cantidadTareas === 0) {
+      return promedioEvaluaciones;
+    }
+
+    // Si solo hay tareas
+    if (cantidadTareas > 0 && cantidadEvaluaciones === 0) {
+      return promedioTareas;
+    }
+
+    // Si hay ambos, aplicar pesos (70% evaluaciones, 30% tareas)
+    const pesoEvaluaciones = 0.7;
+    const pesoTareas = 0.3;
 
     return (promedioEvaluaciones * pesoEvaluaciones) + (promedioTareas * pesoTareas);
   }
 
-  // Generar observaciones académicas automáticas
-  private generarObservacionesAcademicas(calificacionFinal: string, totalNotas: number): string {
+  // Generar observaciones académicas automáticas mejoradas
+  private generarObservacionesAcademicas(
+    calificacionFinal: string,
+    totalNotas: number,
+    cantidadEvaluaciones: number = 0,
+    cantidadTareas: number = 0
+  ): string {
     const descripcion = CalificacionKinderHelper.obtenerDescripcion(calificacionFinal);
+    const detalleNotas = `${cantidadEvaluaciones} evaluaciones y ${cantidadTareas} tareas registradas`;
 
     switch (calificacionFinal) {
       case 'AD':
-        return `El estudiante demuestra un ${descripcion} en todas las competencias evaluadas. Ha superado las expectativas del grado con ${totalNotas} evaluaciones registradas.`;
+        return `El estudiante demuestra un ${descripcion} en todas las competencias evaluadas. Ha superado las expectativas del grado. Registro: ${detalleNotas}.`;
       case 'A':
-        return `El estudiante ha alcanzado el ${descripcion} en las competencias del grado. Muestra un buen desempeño con ${totalNotas} evaluaciones registradas.`;
+        return `El estudiante ha alcanzado el ${descripcion} en las competencias del grado. Muestra un buen desempeño académico. Registro: ${detalleNotas}.`;
       case 'B':
-        return `El estudiante se encuentra ${descripcion} hacia el logro de las competencias. Se recomienda refuerzo en algunas áreas. Total de evaluaciones: ${totalNotas}.`;
+        return `El estudiante se encuentra ${descripcion} hacia el logro de las competencias. Se recomienda refuerzo en algunas áreas. Registro: ${detalleNotas}.`;
       case 'C':
-        return `El estudiante está ${descripcion} del desarrollo de las competencias. Requiere acompañamiento y refuerzo constante. Total de evaluaciones: ${totalNotas}.`;
+        return `El estudiante está ${descripcion} del desarrollo de las competencias. Requiere acompañamiento y refuerzo constante. Registro: ${detalleNotas}.`;
       default:
-        return `Evaluación en proceso con ${totalNotas} registros.`;
+        return `Evaluación en proceso. Total de registros: ${totalNotas}.`;
     }
   }
 
@@ -132,7 +207,7 @@ export class LibretaBimestralService {
     });
 
     if (!libretaExistente) {
-      throw new Error('No se encontró libreta bimestral para recalcular');
+      throw new NotFoundException('No se encontró libreta bimestral para recalcular');
     }
 
     // Obtener todas las notas actualizadas
@@ -141,11 +216,21 @@ export class LibretaBimestralService {
         idEstudiante,
         idBimestre
       },
-      relations: ['idEvaluacion2', 'idTarea']
+      relations: ['idEvaluacion2', 'idTarea', 'idBimestre2']
     });
 
+    console.log(`Recalculando libreta - Notas encontradas: ${notas.length}`);
+
+    // Si no hay notas, mantener valores mínimos
     if (notas.length === 0) {
-      throw new Error('No se encontraron notas para recalcular la libreta bimestral');
+      libretaExistente.promedioEvaluaciones = '0.00';
+      libretaExistente.promedioTareas = '0.00';
+      libretaExistente.promedioFinal = '0.00';
+      libretaExistente.calificacionFinal = 'C';
+      libretaExistente.observacionesAcademicas = 'No se han registrado evaluaciones para este bimestre. Libreta pendiente de completar.';
+      libretaExistente.fechaGeneracion = new Date().toISOString().split('T')[0];
+
+      return await this.libretaBimestralRepository.save(libretaExistente);
     }
 
     // Recalcular promedios
@@ -154,7 +239,7 @@ export class LibretaBimestralService {
 
     const promedioEvaluaciones = this.calcularPromedioCalificaciones(notasEvaluaciones);
     const promedioTareas = this.calcularPromedioCalificaciones(notasTareas);
-    const promedioFinal = this.calcularPromedioFinal(promedioEvaluaciones, promedioTareas);
+    const promedioFinal = this.calcularPromedioFinal(promedioEvaluaciones, promedioTareas, notasEvaluaciones.length, notasTareas.length);
     const calificacionFinal = CalificacionKinderHelper.numeroACalificacion(promedioFinal);
 
     // Actualizar la libreta
@@ -162,7 +247,7 @@ export class LibretaBimestralService {
     libretaExistente.promedioTareas = promedioTareas.toFixed(2);
     libretaExistente.promedioFinal = promedioFinal.toFixed(2);
     libretaExistente.calificacionFinal = calificacionFinal;
-    libretaExistente.observacionesAcademicas = this.generarObservacionesAcademicas(calificacionFinal, notas.length);
+    libretaExistente.observacionesAcademicas = this.generarObservacionesAcademicas(calificacionFinal, notas.length, notasEvaluaciones.length, notasTareas.length);
     libretaExistente.fechaGeneracion = new Date().toISOString().split('T')[0];
 
     return await this.libretaBimestralRepository.save(libretaExistente);
@@ -176,29 +261,69 @@ export class LibretaBimestralService {
     });
 
     if (!libreta) {
-      throw new Error('No se encontró libreta bimestral para este estudiante y bimestre');
+      throw new NotFoundException('No se encontró libreta bimestral para este estudiante y bimestre');
     }
 
     return libreta;
   }
 
   create(createLibretaBimestralDto: CreateLibretaBimestralDto) {
-    return 'This action adds a new libretaBimestral';
+    return this.generarLibretaBimestral(
+      createLibretaBimestralDto.idEstudiante,
+      createLibretaBimestralDto.idBimestre,
+      createLibretaBimestralDto.idAula
+    );
   }
 
-  findAll() {
-    return `This action returns all libretaBimestral`;
+  async findAll() {
+    const libretas = await this.libretaBimestralRepository.find({
+      relations: ['idEstudiante2', 'idBimestre2', 'idAula'],
+      order: { fechaGeneracion: 'DESC' }
+    });
+    return libretas;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} libretaBimestral`;
+  async findOne(id: string) {
+    const libreta = await this.libretaBimestralRepository.findOne({
+      where: { idLibretaBimestral: id },
+      relations: ['idEstudiante2', 'idBimestre2', 'idAula']
+    });
+
+    if (!libreta) {
+      throw new NotFoundException('Libreta bimestral no encontrada');
+    }
+
+    return libreta;
   }
 
-  update(id: number, updateLibretaBimestralDto: UpdateLibretaBimestralDto) {
-    return `This action updates a #${id} libretaBimestral`;
+  async update(id: string, updateLibretaBimestralDto: UpdateLibretaBimestralDto) {
+    const libreta = await this.libretaBimestralRepository.findOne({
+      where: { idLibretaBimestral: id }
+    });
+
+    if (!libreta) {
+      throw new NotFoundException('Libreta bimestral no encontrada');
+    }
+
+    // Actualizar solo los campos permitidos manualmente
+    if (updateLibretaBimestralDto.observacionesConducta !== undefined) {
+      libreta.observacionesConducta = updateLibretaBimestralDto.observacionesConducta;
+    }
+
+    if (updateLibretaBimestralDto.conducta !== undefined) {
+      libreta.conducta = updateLibretaBimestralDto.conducta;
+    }
+
+    return await this.libretaBimestralRepository.save(libreta);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} libretaBimestral`;
+  async remove(id: string) {
+    const result = await this.libretaBimestralRepository.delete(id);
+
+    if (result.affected === 0) {
+      throw new NotFoundException('Libreta bimestral no encontrada');
+    }
+
+    return { message: 'Libreta bimestral eliminada exitosamente' };
   }
 }
