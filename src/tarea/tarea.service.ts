@@ -27,7 +27,7 @@ export class TareaService {
     private readonly trabajadorService: TrabajadorService,
     private readonly matriculaAulaService: MatriculaAulaService,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   async createNuevoOptimizado(createTarea: CreateTareaDto): Promise<any> {
     return await this.dataSource.transaction(async (manager) => {
@@ -42,27 +42,46 @@ export class TareaService {
           'trabajador.nombre as trabajadorNombre',
           'trabajador.apellido as trabajadorApellido',
           'rol.nombre as rolNombre',
-          'asignacion.idAsignacionAula as asignacionId'
+          'asignacion.idAsignacionAula as asignacionId',
         ])
         .from('aula', 'aula')
         .leftJoin('aula.idGrado', 'grado')
-        .leftJoin('trabajador', 'trabajador', 'trabajador.idTrabajador = :idTrabajador')
+        .leftJoin(
+          'trabajador',
+          'trabajador',
+          'trabajador.idTrabajador = :idTrabajador',
+        )
         .leftJoin('trabajador.idRol', 'rol')
-        .leftJoin('asignacion_aula', 'asignacion',
-          'asignacion.idAula = aula.idAula AND asignacion.idTrabajador = trabajador.idTrabajador')
+        .leftJoin(
+          'asignacion_aula',
+          'asignacion',
+          'asignacion.idAula = aula.idAula AND asignacion.idTrabajador = trabajador.idTrabajador',
+        )
         .where('aula.idAula = :idAula')
         .setParameters({
           idAula: createTarea.idAula,
-          idTrabajador: createTarea.idTrabajador
+          idTrabajador: createTarea.idTrabajador,
         })
         .getRawOne();
 
       // 2. VALIDACIONES OPTIMIZADAS
       const validaciones = new Map([
-        [!validacionCompleta?.aulaId, new NotFoundException('Aula no encontrada')],
-        [!validacionCompleta?.trabajadorId, new NotFoundException('Trabajador no encontrado')],
-        [validacionCompleta?.rolNombre !== 'DOCENTE', new BadRequestException('Solo los docentes pueden asignar tareas')],
-        [!validacionCompleta?.asignacionId, new BadRequestException('El docente no está asignado al aula')]
+        [
+          !validacionCompleta?.aulaId,
+          new NotFoundException('Aula no encontrada'),
+        ],
+        [
+          !validacionCompleta?.trabajadorId,
+          new NotFoundException('Trabajador no encontrado'),
+        ],
+        [
+          validacionCompleta?.rolNombre !== 'DOCENTE',
+          new BadRequestException('Solo los docentes pueden asignar tareas'),
+        ],
+        [
+          !validacionCompleta?.asignacionId,
+          new BadRequestException('El docente no está asignado al aula'),
+        ],
       ]);
 
       for (const [condicion, error] of validaciones) {
@@ -75,7 +94,9 @@ export class TareaService {
       fechaActual.setHours(0, 0, 0, 0);
 
       if (fechaEntrega < fechaActual) {
-        throw new BadRequestException('La fecha de entrega no puede ser anterior a la fecha actual');
+        throw new BadRequestException(
+          'La fecha de entrega no puede ser anterior a la fecha actual',
+        );
       }
 
       // 4. CREAR LA TAREA (usando manager)
@@ -91,50 +112,61 @@ export class TareaService {
       const tareaGuardada = await manager.save(Tarea, tarea);
 
       // 5. OBTENER ESTUDIANTES DEL AULA
-      const estudiantesAula = await this.matriculaAulaService.obtenerEstudiantesDelAula(createTarea.idAula);
+      const estudiantesAula =
+        await this.matriculaAulaService.obtenerEstudiantesDelAula(
+          createTarea.idAula,
+        );
 
       // 6. EXTRAER IDS DE ESTUDIANTES
-      const idsEstudiantes = estudiantesAula.map(ea => ea.matricula.idEstudiante.idEstudiante);
+      const idsEstudiantes = estudiantesAula.map(
+        (ea) => ea.matricula.idEstudiante.idEstudiante,
+      );
 
       // 7. VERIFICAR ENTREGAS EXISTENTES (usando manager)
       const entregasExistentes = await manager.find(TareaEntrega, {
         where: {
           idTarea: tareaGuardada.idTarea,
-          idEstudiante: In(idsEstudiantes)
+          idEstudiante: In(idsEstudiantes),
         },
-        select: ['idEstudiante']
+        select: ['idEstudiante'],
       });
 
       // 8. CREAR SET DE IDS EXISTENTES
-      const idsEntregasExistentes = new Set(entregasExistentes.map(e => e.idEstudiante));
+      const idsEntregasExistentes = new Set(
+        entregasExistentes.map((e) => e.idEstudiante),
+      );
 
       // 9. FILTRAR ESTUDIANTES SIN ENTREGA
-      const estudiantesSinEntrega = estudiantesAula.filter(ea =>
-        !idsEntregasExistentes.has(ea.matricula.idEstudiante.idEstudiante)
+      const estudiantesSinEntrega = estudiantesAula.filter(
+        (ea) =>
+          !idsEntregasExistentes.has(ea.matricula.idEstudiante.idEstudiante),
       );
 
       // 10. CREAR ENTREGAS EN LOTE (usando manager)
-      const nuevasEntregas = estudiantesSinEntrega.map(ea =>
+      const nuevasEntregas = estudiantesSinEntrega.map((ea) =>
         manager.create(TareaEntrega, {
           idTarea: tareaGuardada.idTarea,
           idEstudiante: ea.matricula.idEstudiante.idEstudiante,
           estado: 'pendiente',
           fechaEntrega: createTarea.fechaEntrega,
-        })
+        }),
       );
 
       // 11. GUARDAR ENTREGAS (manejar array vacío)
-      const entregasGuardadas = nuevasEntregas.length > 0
-        ? await manager.save(TareaEntrega, nuevasEntregas)
-        : [];
+      const entregasGuardadas =
+        nuevasEntregas.length > 0
+          ? await manager.save(TareaEntrega, nuevasEntregas)
+          : [];
 
       // 12. CONSTRUIR RESPUESTA SIN CONSULTA ADICIONAL
       const aulaInfo = {
         idAula: validacionCompleta.aulaId,
         seccion: validacionCompleta.aulaSeccion,
-        idGrado: validacionCompleta.gradoNombre ? {
-          grado: validacionCompleta.gradoNombre
-        } : null
+        idGrado: validacionCompleta.gradoNombre
+          ? {
+              grado: validacionCompleta.gradoNombre,
+            }
+          : null,
       };
 
       const trabajadorInfo = {
@@ -142,19 +174,19 @@ export class TareaService {
         nombre: validacionCompleta.trabajadorNombre,
         apellido: validacionCompleta.trabajadorApellido,
         idRol: {
-          nombre: validacionCompleta.rolNombre
-        }
+          nombre: validacionCompleta.rolNombre,
+        },
       };
 
       const tareaCompleta = {
         ...tareaGuardada,
         aula: aulaInfo,
         idTrabajador: trabajadorInfo,
-        tareaEntregas: entregasGuardadas
+        tareaEntregas: entregasGuardadas,
       };
 
       // 13. MAPEAR ESTUDIANTES ASIGNADOS (CORREGIDO)
-      const estudiantesAsignados = estudiantesSinEntrega.map(ea => ({
+      const estudiantesAsignados = estudiantesSinEntrega.map((ea) => ({
         idEstudiante: ea.matricula.idEstudiante.idEstudiante,
         nombre: `${ea.matricula.idEstudiante.nombre} ${ea.matricula.idEstudiante.apellido}`,
       }));
@@ -193,8 +225,15 @@ export class TareaService {
       }
 
       //VALIDAR QUE EL DOCENTE SEA DEL MISMO AULA PARA QUE ASIGNE LA TAREA
-      const asignaciones = await this.aulaService.getAsignacionesDeAula(aula.idAula);
-      if (!asignaciones.some(asignacion => asignacion.idTrabajador.idTrabajador === trabajador.idTrabajador)) {
+      const asignaciones = await this.aulaService.getAsignacionesDeAula(
+        aula.idAula,
+      );
+      if (
+        !asignaciones.some(
+          (asignacion) =>
+            asignacion.idTrabajador.idTrabajador === trabajador.idTrabajador,
+        )
+      ) {
         throw new BadRequestException('El docente no está asignado al aula');
       }
 
@@ -214,6 +253,7 @@ export class TareaService {
         descripcion: createTareaDto.descripcion || null,
         fechaEntrega: createTareaDto.fechaEntrega,
         estado: createTareaDto.estado || 'pendiente',
+        archivoUrl: createTareaDto.archivoUrl || null,
         aula: { idAula: createTareaDto.idAula },
         idTrabajador: { idTrabajador: createTareaDto.idTrabajador },
       });
@@ -246,7 +286,10 @@ export class TareaService {
             fechaEntrega: createTareaDto.fechaEntrega,
           });
 
-          const entregaGuardada = await manager.save(TareaEntrega, tareaEntrega);
+          const entregaGuardada = await manager.save(
+            TareaEntrega,
+            tareaEntrega,
+          );
           entregasCreadas.push(entregaGuardada);
         }
       }
@@ -461,6 +504,16 @@ export class TareaService {
       }
 
       if (
+        updateTareaDto.archivoUrl &&
+        updateTareaDto.archivoUrl !== tarea.archivoUrl
+      ) {
+        updateData.archivoUrl = updateTareaDto.archivoUrl;
+        cambiosRealizados.push(
+          `Archivo URL actualizado: ${tarea.archivoUrl} → ${updateTareaDto.archivoUrl}`,
+        );
+      }
+
+      if (
         updateTareaDto.idAula &&
         updateTareaDto.idAula !== tarea.aula.idAula
       ) {
@@ -590,7 +643,9 @@ export class TareaService {
       .leftJoinAndSelect('trabajador.idRol', 'rol')
       .leftJoinAndSelect('tarea.tareaEntregas', 'tareaEntregas')
       .leftJoinAndSelect('tareaEntregas.idEstudiante2', 'estudiante')
-      .where('tarea.idTrabajador = :trabajadorId', { trabajadorId: trabajador.idTrabajador })
+      .where('tarea.idTrabajador = :trabajadorId', {
+        trabajadorId: trabajador.idTrabajador,
+      })
       .orderBy('tarea.fechaAsignacion', 'DESC')
       .getMany();
 
@@ -614,7 +669,7 @@ export class TareaService {
       .leftJoinAndSelect('trabajador.idRol', 'rol')
       .leftJoinAndSelect('tarea.tareaEntregas', 'tareaEntregas')
       .leftJoinAndSelect('tareaEntregas.idEstudiante2', 'estudiante')
-      .where('tareaEntregas.idEstudiante = :idEstudiante', { idEstudiante })  
+      .where('tareaEntregas.idEstudiante = :idEstudiante', { idEstudiante })
       .orderBy('tarea.fechaAsignacion', 'DESC')
       .getMany();
     return {
