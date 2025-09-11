@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { CreateAulaDto } from './dto/create-aula.dto';
 import { UpdateAulaDto } from './dto/update-aula.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,6 +13,18 @@ export class AulaService {
 
 
   async create(createAulaDto: CreateAulaDto): Promise<Aula> {
+    // Validar que no exista otra aula con la misma sección en el mismo grado
+    const aulaExistente = await this.aulaRepository
+      .createQueryBuilder('aula')
+      .leftJoinAndSelect('aula.idGrado', 'grado')
+      .where('aula.seccion = :seccion', { seccion: createAulaDto.seccion })
+      .andWhere('grado.idGrado = :idGrado', { idGrado: createAulaDto.idGrado })
+      .getOne();
+
+    if (aulaExistente) {
+      throw new ConflictException(`Ya existe un aula con la sección ${createAulaDto.seccion} en el grado ${createAulaDto.idGrado}`);
+    }
+
     const aulaData = {
       seccion: createAulaDto.seccion,
       cantidadEstudiantes: createAulaDto.cantidadEstudiantes,
