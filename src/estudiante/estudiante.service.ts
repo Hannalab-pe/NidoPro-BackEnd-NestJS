@@ -205,19 +205,91 @@ export class EstudianteService {
         throw new BadRequestException('El ID del aula es requerido');
       }
 
-      // Ejecutar la consulta SQL personalizada
-      const estudiantes = await this.dataSource.query(
-        `
-        SELECT DISTINCT e.id_estudiante, e.nombre, e.apellido, au.seccion
-        FROM public.estudiante e
-        INNER JOIN matricula ma ON ma.id_estudiante = e.id_estudiante 
-        INNER JOIN matricula_aula mat ON mat.id_matricula = ma.id_matricula 
-        INNER JOIN aula au ON au.id_aula = mat.id_aula 
-        WHERE au.id_aula = $1
-        ORDER BY au.seccion, e.apellido, e.nombre;
-      `,
-        [idAula],
-      );
+      // Ejecutar la consulta con QueryBuilder para obtener datos anidados
+      const estudiantesRaw = await this.estudianteRepository
+        .createQueryBuilder('estudiante')
+        .leftJoinAndSelect('estudiante.contactosEmergencia', 'contactos')
+        .leftJoinAndSelect('estudiante.matriculas', 'matricula')
+        .leftJoinAndSelect('matricula.idApoderado', 'apoderado')
+        .leftJoinAndSelect('matricula.idGrado', 'grado')
+        .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
+        .leftJoinAndSelect('matriculaAula.aula', 'aula')
+        .where('aula.idAula = :idAula', { idAula })
+        .andWhere('matriculaAula.estado = :estado', { estado: 'activo' })
+        .orderBy('aula.seccion', 'ASC')
+        .addOrderBy('estudiante.apellido', 'ASC')
+        .addOrderBy('estudiante.nombre', 'ASC')
+        .getMany();
+
+      // Transformar los datos para una mejor estructura
+      const estudiantes = estudiantesRaw.map(estudiante => {
+        // Buscar la matrícula activa en el aula específica
+        const matriculaActiva = estudiante.matriculas.find(
+          matricula => matricula.matriculaAula?.aula?.idAula === idAula
+        );
+
+        return {
+          // Información del estudiante
+          idEstudiante: estudiante.idEstudiante,
+          nombre: estudiante.nombre,
+          apellido: estudiante.apellido,
+          nombreCompleto: `${estudiante.nombre} ${estudiante.apellido}`,
+          tipoDocumento: estudiante.tipoDocumento,
+          nroDocumento: estudiante.nroDocumento,
+          observaciones: estudiante.observaciones,
+          imagenEstudiante: estudiante.imagen_estudiante,
+          // Información de la matrícula activa
+          infoApoderado: matriculaActiva ? {
+
+            // Información del apoderado
+            apoderado: matriculaActiva.idApoderado ? {
+              idApoderado: matriculaActiva.idApoderado.idApoderado,
+              nombre: matriculaActiva.idApoderado.nombre,
+              apellido: matriculaActiva.idApoderado.apellido,
+              nombreCompleto: `${matriculaActiva.idApoderado.nombre} ${matriculaActiva.idApoderado.apellido}`,
+              numero: matriculaActiva.idApoderado.numero,
+              correo: matriculaActiva.idApoderado.correo,
+              direccion: matriculaActiva.idApoderado.direccion,
+              documentoIdentidad: matriculaActiva.idApoderado.documentoIdentidad,
+              tipoDocumentoIdentidad: matriculaActiva.idApoderado.tipoDocumentoIdentidad,
+              esPrincipal: matriculaActiva.idApoderado.esPrincipal,
+              tipoApoderado: matriculaActiva.idApoderado.tipoApoderado
+            } : null,
+
+            // Información del grado
+            grado: matriculaActiva.idGrado ? {
+              idGrado: matriculaActiva.idGrado.idGrado,
+              grado: matriculaActiva.idGrado.grado,
+              descripcion: matriculaActiva.idGrado.descripcion,
+              estaActivo: matriculaActiva.idGrado.estaActivo
+            } : null,
+
+            // Información del aula
+            aula: matriculaActiva.matriculaAula?.aula ? {
+              idAula: matriculaActiva.matriculaAula.aula.idAula,
+              seccion: matriculaActiva.matriculaAula.aula.seccion,
+              cantidadEstudiantes: matriculaActiva.matriculaAula.aula.cantidadEstudiantes,
+              fechaAsignacion: matriculaActiva.matriculaAula.fechaAsignacion,
+              estado: matriculaActiva.matriculaAula.estado
+            } : null
+          } : null,
+
+          // Contactos de emergencia
+          contactosEmergencia: estudiante.contactosEmergencia?.map(contacto => ({
+            idContacto: contacto.idContactoEmergencia,
+            nombre: contacto.nombre,
+            apellido: contacto.apellido,
+            telefono: contacto.telefono,
+            email: contacto.email,
+            tipoContacto: contacto.tipoContacto,
+            relacionEstudiante: contacto.relacionEstudiante,
+            esPrincipal: contacto.esPrincipal,
+            prioridad: contacto.prioridad,
+            observaciones: contacto.observaciones,
+            estaActivo: contacto.estaActivo
+          })) || []
+        };
+      });
 
       return {
         success: true,
