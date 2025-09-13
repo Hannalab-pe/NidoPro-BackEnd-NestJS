@@ -44,6 +44,7 @@ import { RenovacionContratoModule } from './renovacion-contrato/renovacion-contr
 import { AnotacionesEstudianteModule } from './anotaciones-estudiante/anotaciones-estudiante.module';
 import { CajaSimpleModule } from './caja-simple/caja-simple.module';
 import { ContactoEmergenciaModule } from './contacto-emergencia/contacto-emergencia.module';
+import { PlanificacionModule } from './planificacion/planificacion.module';
 
 @Module({
   imports: [
@@ -101,6 +102,7 @@ import { ContactoEmergenciaModule } from './contacto-emergencia/contacto-emergen
     AnotacionesEstudianteModule,
     CajaSimpleModule,
     ContactoEmergenciaModule,
+    PlanificacionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
