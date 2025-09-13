@@ -19,9 +19,13 @@ export class PeriodoEscolarService {
       throw new BadRequestException('La fecha de fin debe ser posterior a la fecha de inicio');
     }
 
-    // Validar que el año escolar sea mayor a 2020
-    if (createPeriodoEscolarDto.anioEscolar <= 2025) {
-      throw new BadRequestException('El año escolar debe ser mayor a 2025');
+    // Validar que el año escolar sea mayor a 2020 y no exceda el año siguiente al actual
+    const currentYear = new Date().getFullYear();
+    if (createPeriodoEscolarDto.anioEscolar <= 2020) {
+      throw new BadRequestException('El año escolar debe ser mayor a 2020');
+    }
+    if (createPeriodoEscolarDto.anioEscolar > currentYear + 1) {
+      throw new BadRequestException(`El año escolar no puede ser mayor a ${currentYear + 1}`);
     }
 
     // Verificar que no exista ya un período escolar para ese año
