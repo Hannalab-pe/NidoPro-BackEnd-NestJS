@@ -21,7 +21,7 @@ export class DetallePlanillaService {
     private readonly planillaMensualRepository: Repository<PlanillaMensual>,
     @InjectRepository(Trabajador)
     private readonly trabajadorRepository: Repository<Trabajador>,
-  ) {}
+  ) { }
 
   async updatePlanilla(
     id: string,
@@ -444,10 +444,10 @@ export class DetallePlanillaService {
     idTrabajador: string,
     sueldoData: any,
   ): Promise<DetallePlanilla> {
-    const sueldoBase = sueldoData.sueldoBase;
-    const bonificacionFamiliar = sueldoData.bonificacionFamiliar || 0;
-    const asignacionFamiliar = sueldoData.asignacionFamiliar || 0;
-    const otrosIngresos = sueldoData.otrosIngresos || 0;
+    const sueldoBase = Number(sueldoData.sueldoBase);
+    const bonificacionFamiliar = Number(sueldoData.bonificacionFamiliar) || 0;
+    const asignacionFamiliar = Number(sueldoData.asignacionFamiliar) || 0;
+    const otrosIngresos = Number(sueldoData.otrosIngresos) || 0;
 
     const totalIngresos =
       sueldoBase + bonificacionFamiliar + asignacionFamiliar + otrosIngresos;
@@ -483,6 +483,51 @@ export class DetallePlanillaService {
     });
 
     return await this.detallePlanillaRepository.save(detalle);
+  }
+
+  // Nuevo método que solo crea el objeto sin guardarlo - para transacciones
+  crearDetalleTrabajadorSinGuardar(
+    idPlanillaMensual: string,
+    idTrabajador: string,
+    sueldoData: any,
+  ): DetallePlanilla {
+    const sueldoBase = Number(sueldoData.sueldoBase);
+    const bonificacionFamiliar = Number(sueldoData.bonificacionFamiliar) || 0;
+    const asignacionFamiliar = Number(sueldoData.asignacionFamiliar) || 0;
+    const otrosIngresos = Number(sueldoData.otrosIngresos) || 0;
+
+    const totalIngresos =
+      sueldoBase + bonificacionFamiliar + asignacionFamiliar + otrosIngresos;
+    const descuentoAfp = this.calcularDescuentoAfp(sueldoBase);
+    const descuentoEssalud = this.calcularDescuentoEssalud(sueldoBase);
+    const totalDescuentos = descuentoAfp + descuentoEssalud;
+    const sueldoNeto = totalIngresos - totalDescuentos;
+
+    return this.detallePlanillaRepository.create({
+      idPlanillaMensual: idPlanillaMensual,
+      idTrabajador: idTrabajador,
+      sueldoBase: sueldoBase,
+      bonificacionFamiliar: bonificacionFamiliar,
+      asignacionFamiliar: asignacionFamiliar,
+      otrosIngresos: otrosIngresos,
+      totalIngresos: totalIngresos,
+      descuentoAfp: descuentoAfp,
+      descuentoEssalud: descuentoEssalud,
+      descuentoOnp: 0,
+      otrosDescuentos: 0,
+      totalDescuentos: totalDescuentos,
+      sueldoNeto: sueldoNeto,
+      diasTrabajados: 30,
+      diasFaltados: 0,
+      estadoPago: EstadoPago.PENDIENTE,
+      ctsSemestral: 0,
+      ctsMensual: 0,
+      gratificacion: 0,
+      fechaGratificacionDeposito: null,
+      fechaCtsDeposito: null,
+      creadoEn: new Date(),
+      actualizadoEn: new Date(),
+    });
   }
 
   async actualizarEstadoPagoPlanilla(

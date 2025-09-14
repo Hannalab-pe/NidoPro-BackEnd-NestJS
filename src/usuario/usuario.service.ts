@@ -12,7 +12,7 @@ import {
 } from './dto/change-password.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Usuario } from './entities/usuario.entity';
-import { QueryRunner, Repository } from 'typeorm';
+import { QueryRunner, Repository, EntityManager } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -20,7 +20,7 @@ export class UsuarioService {
   constructor(
     @InjectRepository(Usuario)
     private readonly usuarioRepository: Repository<Usuario>,
-  ) {}
+  ) { }
 
   // NUEVO MÉTODO - Agregar este método para transacciones con QueryRunner
   async createWithQueryRunner(
@@ -44,6 +44,31 @@ export class UsuarioService {
       success: true,
       message: 'Usuario creado correctamente',
       usuario,
+    };
+  }
+
+  // NUEVO MÉTODO - Para transacciones con EntityManager
+  async createWithManager(
+    createUsuarioDto: CreateUsuarioDto,
+    manager: EntityManager,
+  ) {
+    // ¡IMPORTANTE! Hashear la contraseña antes de crear el usuario
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(
+      createUsuarioDto.contrasena,
+      saltRounds,
+    );
+
+    const usuario = manager.create(Usuario, {
+      ...createUsuarioDto,
+      contrasena: hashedPassword, // Usar la contraseña hasheada
+      cambioContrasena: false, // Asegurar que sea false por defecto
+    });
+    const savedUsuario = await manager.save(Usuario, usuario);
+    return {
+      success: true,
+      message: 'Usuario creado correctamente',
+      usuario: savedUsuario,
     };
   }
 
