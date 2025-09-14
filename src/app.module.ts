@@ -45,6 +45,7 @@ import { AnotacionesEstudianteModule } from './anotaciones-estudiante/anotacione
 import { CajaSimpleModule } from './caja-simple/caja-simple.module';
 import { ContactoEmergenciaModule } from './contacto-emergencia/contacto-emergencia.module';
 import { PlanificacionModule } from './planificacion/planificacion.module';
+import { ComentarioDocenteModule } from './comentario-docente/comentario-docente.module';
 
 @Module({
   imports: [
@@ -103,6 +104,7 @@ import { PlanificacionModule } from './planificacion/planificacion.module';
     CajaSimpleModule,
     ContactoEmergenciaModule,
     PlanificacionModule,
+    ComentarioDocenteModule,
   ],
   controllers: [AppController],
   providers: [AppService],
