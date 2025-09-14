@@ -129,71 +129,130 @@ export class PlanillaMensualService {
     await queryRunner.startTransaction();
 
     try {
-      // 1. Crear la planilla principal
-      const createPlanillaDto: CreatePlanillaMensualDto = {
-        mes: data.mes,
-        anio: data.anio,
-        fechaPagoProgramada: data.fechaPagoProgramada,
-        generadoPor: data.generadoPor,
-        observaciones: `Planilla generada automáticamente con ${data.trabajadores.length} trabajadores`,
-      };
+      // 1. Verificar que no existe una planilla para el mismo mes y año
+      const planillaExistente = await queryRunner.manager.findOne(PlanillaMensual, {
+        where: {
+          mes: data.mes,
+          anio: data.anio,
+        },
+      });
 
-      const resultadoPlanilla = await this.create(createPlanillaDto);
+      if (planillaExistente) {
+        throw new ConflictException(
+          `Ya existe una planilla para ${data.mes}/${data.anio}`,
+        );
+      }
 
-      // 2. Obtener información de los trabajadores
+      // 2. Verificar que el trabajador generador existe
+      const trabajadorGenerador = await this.trabajadorService.findOne(
+        data.generadoPor,
+      );
+
+      if (!trabajadorGenerador) {
+        throw new NotFoundException('El trabajador generador no existe');
+      }
+
+      // 3. Obtener información de los trabajadores
+      console.log('🔍 Validando trabajadores:', data.trabajadores);
       const trabajadores = await this.trabajadorService.findByIds(
         data.trabajadores,
       );
 
       if (trabajadores.length !== data.trabajadores.length) {
-        throw new BadRequestException('Algunos trabajadores no existen');
+        const trabajadoresEncontrados = trabajadores.map(t => t.idTrabajador);
+        const trabajadoresNoEncontrados = data.trabajadores.filter(id => !trabajadoresEncontrados.includes(id));
+        throw new BadRequestException(`Los siguientes trabajadores no existen: ${trabajadoresNoEncontrados.join(', ')}`);
       }
 
-      // 3. Crear detalles de planilla para cada trabajador
+      // 4. Crear la planilla principal usando la transacción
+      console.log('📋 Creando planilla principal...');
+      const planilla = queryRunner.manager.create(PlanillaMensual, {
+        mes: data.mes,
+        anio: data.anio,
+        fechaPagoProgramada: data.fechaPagoProgramada,
+        estadoPlanilla: EstadoPlanilla.GENERADA,
+        observaciones: `Planilla generada automáticamente con ${data.trabajadores.length} trabajadores`,
+        fechaGeneracion: new Date().toISOString().split('T')[0],
+        totalIngresos: 0,
+        totalDescuentos: 0,
+        totalNeto: 0,
+        creadoEn: new Date(),
+        actualizadoEn: new Date(),
+        generadoPor: { idTrabajador: data.generadoPor } as Trabajador,
+      });
+
+      const planillaGuardada = await queryRunner.manager.save(PlanillaMensual, planilla);
+      console.log('✅ Planilla creada con ID:', planillaGuardada.idPlanillaMensual);
+
+      // 5. Crear detalles de planilla para cada trabajador
+      console.log('👥 Procesando trabajadores...');
       const detallesCreados: DetallePlanilla[] = [];
 
       for (const trabajador of trabajadores) {
-        // Obtener el sueldo vigente del trabajador desde la tabla sueldo_trabajador
-        const sueldoData =
-          await this.sueldoTrabajadorService.obtenerSueldoVigenteTrabajador(
+        try {
+          console.log(`🔄 Procesando trabajador: ${trabajador.nombre} ${trabajador.apellido}`);
+
+          // Obtener el sueldo vigente del trabajador
+          const sueldoData = await this.sueldoTrabajadorService.obtenerSueldoVigenteTrabajador(
             trabajador.idTrabajador,
           );
 
-        if (!sueldoData) {
-          throw new BadRequestException(
-            `No se encontró sueldo vigente para el trabajador ${trabajador.nombre} ${trabajador.apellido}`,
-          );
-        }
+          if (!sueldoData) {
+            throw new BadRequestException(
+              `No se encontró sueldo vigente para el trabajador ${trabajador.nombre} ${trabajador.apellido}`,
+            );
+          }
 
-        // Crear detalle usando el servicio correspondiente
-        const detalleGuardado = await queryRunner.manager.save(
-          DetallePlanilla,
-          await this.detallePlanillaService.crearDetalleTrabajador(
-            resultadoPlanilla.planilla.idPlanillaMensual,
+          console.log(`💰 Sueldo encontrado para ${trabajador.nombre}: ${sueldoData.sueldoBase}`);
+
+          // Crear detalle usando el servicio correspondiente (sin guardarlo aún)
+          const detalleNuevo = this.detallePlanillaService.crearDetalleTrabajadorSinGuardar(
+            planillaGuardada.idPlanillaMensual,
             trabajador.idTrabajador,
             sueldoData,
-          ),
-        );
-        detallesCreados.push(detalleGuardado);
+          );
+
+          const detalleGuardado = await queryRunner.manager.save(DetallePlanilla, detalleNuevo);
+          detallesCreados.push(detalleGuardado);
+
+          console.log(`✅ Detalle creado para ${trabajador.nombre}: ID ${detalleGuardado.idDetallePlanilla}`);
+        } catch (error) {
+          console.error(`❌ Error procesando trabajador ${trabajador.nombre}:`, error.message);
+          throw new BadRequestException(
+            `Error procesando trabajador ${trabajador.nombre} ${trabajador.apellido}: ${error.message}`
+          );
+        }
       }
 
-      // 4. Actualizar totales de la planilla
+      // 6. Actualizar totales de la planilla
+      console.log('🔢 Recalculando totales...');
       await this.recalcularTotalesPlanilla(
-        resultadoPlanilla.planilla.idPlanillaMensual,
+        planillaGuardada.idPlanillaMensual,
         queryRunner,
       );
 
       await queryRunner.commitTransaction();
+      console.log('✅ Transacción completada exitosamente');
+
+      // 7. Obtener la planilla completa para devolver
+      const planillaCompleta = await this.findOne(planillaGuardada.idPlanillaMensual);
 
       return {
         success: true,
-        message: `Planilla generada con ${detallesCreados.length} trabajadores`,
-        planilla: resultadoPlanilla.planilla,
+        message: `Planilla generada exitosamente con ${detallesCreados.length} trabajadores`,
+        planilla: planillaCompleta,
         detallesCreados,
       };
     } catch (error) {
+      console.error('❌ Error en generarPlanillaConTrabajadores:', error);
       await queryRunner.rollbackTransaction();
-      throw error;
+
+      // Re-lanzar con más información
+      if (error instanceof BadRequestException || error instanceof ConflictException || error instanceof NotFoundException) {
+        throw error;
+      } else {
+        throw new BadRequestException(`Error interno al generar planilla: ${error.message}`);
+      }
     } finally {
       await queryRunner.release();
     }
@@ -441,10 +500,12 @@ export class PlanillaMensualService {
       }
 
       // 2. Obtener todas las planillas en una sola consulta
-      const planillas = await queryRunner.manager.find(PlanillaMensual, {
-        where: { idPlanillaMensual: { $in: idsPlanillas } as any },
-        relations: ['detallePlanillas', 'detallePlanillas.idTrabajador2'],
-      });
+      const planillas = await queryRunner.manager
+        .createQueryBuilder(PlanillaMensual, 'planilla')
+        .leftJoinAndSelect('planilla.detallePlanillas', 'detalle')
+        .leftJoinAndSelect('detalle.idTrabajador2', 'trabajador')
+        .where('planilla.idPlanillaMensual IN (:...ids)', { ids: idsPlanillas })
+        .getMany();
 
       const resultados = {
         planillasAprobadas: 0,
@@ -817,28 +878,50 @@ export class PlanillaMensualService {
     idPlanilla: string,
     queryRunner?: any,
   ): Promise<void> {
-    const repository = queryRunner
-      ? queryRunner.manager
-      : this.detallePlanillaRepository;
+    let totales;
 
-    const totales = await repository
-      .createQueryBuilder('detalle')
-      .select('SUM(detalle.totalIngresos)', 'totalIngresos')
-      .addSelect('SUM(detalle.totalDescuentos)', 'totalDescuentos')
-      .addSelect('SUM(detalle.sueldoNeto)', 'totalNeto')
-      .where('detalle.idPlanillaMensual = :idPlanilla', { idPlanilla })
-      .getRawOne();
+    if (queryRunner) {
+      // Cuando usamos queryRunner, necesitamos especificar la entidad
+      totales = await queryRunner.manager
+        .createQueryBuilder(DetallePlanilla, 'detalle')
+        .select('SUM(detalle.totalIngresos)', 'totalIngresos')
+        .addSelect('SUM(detalle.totalDescuentos)', 'totalDescuentos')
+        .addSelect('SUM(detalle.sueldoNeto)', 'totalNeto')
+        .where('detalle.idPlanillaMensual = :idPlanilla', { idPlanilla })
+        .getRawOne();
+    } else {
+      // Cuando usamos el repositorio normal
+      totales = await this.detallePlanillaRepository
+        .createQueryBuilder('detalle')
+        .select('SUM(detalle.totalIngresos)', 'totalIngresos')
+        .addSelect('SUM(detalle.totalDescuentos)', 'totalDescuentos')
+        .addSelect('SUM(detalle.sueldoNeto)', 'totalNeto')
+        .where('detalle.idPlanillaMensual = :idPlanilla', { idPlanilla })
+        .getRawOne();
+    }
 
-    const planillaRepository = queryRunner
-      ? queryRunner.manager
-      : this.planillaMensualRepository;
-
-    await planillaRepository.update(idPlanilla, {
-      totalIngresos: parseFloat(totales.totalIngresos) || 0,
-      totalDescuentos: parseFloat(totales.totalDescuentos) || 0,
-      totalNeto: parseFloat(totales.totalNeto) || 0,
-      actualizadoEn: new Date(),
-    });
+    if (queryRunner) {
+      // Cuando usamos queryRunner, necesitamos usar query builder para update
+      await queryRunner.manager
+        .createQueryBuilder()
+        .update(PlanillaMensual)
+        .set({
+          totalIngresos: parseFloat(totales.totalIngresos) || 0,
+          totalDescuentos: parseFloat(totales.totalDescuentos) || 0,
+          totalNeto: parseFloat(totales.totalNeto) || 0,
+          actualizadoEn: new Date(),
+        })
+        .where('idPlanillaMensual = :idPlanilla', { idPlanilla })
+        .execute();
+    } else {
+      // Cuando usamos el repositorio normal
+      await this.planillaMensualRepository.update(idPlanilla, {
+        totalIngresos: parseFloat(totales.totalIngresos) || 0,
+        totalDescuentos: parseFloat(totales.totalDescuentos) || 0,
+        totalNeto: parseFloat(totales.totalNeto) || 0,
+        actualizadoEn: new Date(),
+      });
+    }
   }
 
   async recalcularTotales(idPlanilla: string): Promise<{

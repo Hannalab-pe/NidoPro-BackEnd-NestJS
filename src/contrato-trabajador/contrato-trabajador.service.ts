@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { CreateContratoTrabajadorDto, FiltrosContratoDto } from './dto/create-contrato-trabajador.dto';
 import { UpdateContratoTrabajadorDto } from './dto/update-contrato-trabajador.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -18,6 +18,7 @@ export class ContratoTrabajadorService {
     private readonly contratoTrabajoRepository: Repository<ContratoTrabajador>,
     private readonly historialContratoService: HistorialContratoService,
     private readonly renovacionContratoService: RenovacionContratoService,
+    @Inject(forwardRef(() => TrabajadorService))
     private readonly trabajadorRepository: TrabajadorService
 
   ) { }

@@ -9,13 +9,14 @@ import {
 } from '@nestjs/common';
 import { TrabajadorService } from './trabajador.service';
 import { CreateTrabajadorDto } from './dto/create-trabajador.dto';
+import { CreateTrabajadorTransactionalDto } from './dto/create-trabajador-transactional.dto';
 import { UpdateTrabajadorDto } from './dto/update-trabajador.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('Trabajadores')
 @Controller('trabajador')
 export class TrabajadorController {
-  constructor(private readonly trabajadorService: TrabajadorService) {}
+  constructor(private readonly trabajadorService: TrabajadorService) { }
 
   @Post()
   @ApiOperation({
@@ -23,6 +24,15 @@ export class TrabajadorController {
   })
   create(@Body() createTrabajadorDto: CreateTrabajadorDto) {
     return this.trabajadorService.create(createTrabajadorDto);
+  }
+
+  @Post('transactional')
+  @ApiOperation({
+    summary: 'Registrar trabajador completo (trabajador + sueldo + contrato) en una transacción',
+    description: 'Crea un trabajador, su usuario, sueldo base y contrato inicial de forma transaccional'
+  })
+  createTransactional(@Body() createTrabajadorTransactionalDto: CreateTrabajadorTransactionalDto) {
+    return this.trabajadorService.createTrabajadorTransactional(createTrabajadorTransactionalDto);
   }
 
   @Get()

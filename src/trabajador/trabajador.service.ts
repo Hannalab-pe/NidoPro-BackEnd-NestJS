@@ -2,17 +2,20 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { CreateTrabajadorDto } from './dto/create-trabajador.dto';
+import { CreateTrabajadorTransactionalDto } from './dto/create-trabajador-transactional.dto';
 import { UpdateTrabajadorDto } from './dto/update-trabajador.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Trabajador } from './entities/trabajador.entity';
-import { DataSource, QueryRunner, Repository, In } from 'typeorm';
+import { DataSource, Repository, In } from 'typeorm';
 import { UsuarioService } from '../usuario/usuario.service';
-import { CreateUsuarioDto } from 'src/usuario/dto/create-usuario.dto';
-import { Usuario } from 'src/usuario/entities/usuario.entity';
 import { Rol } from '../rol/entities/rol.entity';
 import { UserRole } from '../enums/roles.enum';
+import { SueldoTrabajador } from 'src/sueldo-trabajador/entities/sueldo-trabajador.entity';
+import { ContratoTrabajador } from 'src/contrato-trabajador/entities/contrato-trabajador.entity';
 
 @Injectable()
 export class TrabajadorService {
@@ -24,6 +27,168 @@ export class TrabajadorService {
     private readonly usuarioService: UsuarioService,
     private readonly dataSource: DataSource,
   ) { }
+
+  async createTrabajadorTransactional(
+    createTrabajadorTransactionalDto: CreateTrabajadorTransactionalDto,
+    currentUserId?: string
+  ): Promise<{ success: boolean; message: string; trabajador: Trabajador; contrato?: any; sueldo?: any }> {
+    // Validar que el rol existe y es válido para trabajadores
+    const rol = await this.rolRepository.findOne({
+      where: { idRol: createTrabajadorTransactionalDto.idRol, estaActivo: true },
+    });
+
+    if (!rol) {
+      throw new BadRequestException(
+        'El rol especificado no existe o está inactivo',
+      );
+    }
+
+    // Validar que el rol es apropiado para trabajadores (no ESTUDIANTE)
+    const rolesValidosParaTrabajadores = [
+      UserRole.DIRECTORA,
+      UserRole.SECRETARIA,
+      UserRole.DOCENTE,
+    ];
+
+    if (!rolesValidosParaTrabajadores.includes(rol.nombre as UserRole)) {
+      throw new BadRequestException(
+        `El rol "${rol.nombre}" no es válido para trabajadores. Roles válidos: ${rolesValidosParaTrabajadores.join(', ')}`,
+      );
+    }
+
+    // Verificar que no exista un trabajador con el mismo número de documento
+    const trabajadorExistente = await this.trabajadorRepository.findOne({
+      where: { nroDocumento: createTrabajadorTransactionalDto.nroDocumento },
+    });
+
+    if (trabajadorExistente) {
+      throw new BadRequestException(
+        `Ya existe un trabajador con el número de documento: ${createTrabajadorTransactionalDto.nroDocumento}`,
+      );
+    }
+
+    // Crear un queryRunner para manejar TODA la transacción completa
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    // Establecer conexión y comenzar transacción
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    let trabajadorCreado: Trabajador;
+    let sueldo, contrato;
+
+    try {
+      // 1. Crear usuario dentro de la transacción
+      const nuevoUsuario = await this.usuarioService.createWithQueryRunner(
+        {
+          usuario: createTrabajadorTransactionalDto.nroDocumento,
+          contrasena: createTrabajadorTransactionalDto.nroDocumento,
+          estaActivo: true,
+        },
+        queryRunner,
+      );
+
+      // 2. Crear trabajador dentro de la transacción
+      const trabajador = queryRunner.manager.create(Trabajador, {
+        nombre: createTrabajadorTransactionalDto.nombre,
+        apellido: createTrabajadorTransactionalDto.apellido,
+        tipoDocumento: createTrabajadorTransactionalDto.tipoDocumento,
+        nroDocumento: createTrabajadorTransactionalDto.nroDocumento,
+        direccion: createTrabajadorTransactionalDto.direccion,
+        correo: createTrabajadorTransactionalDto.correo,
+        telefono: createTrabajadorTransactionalDto.telefono,
+        estaActivo: createTrabajadorTransactionalDto.estaActivo ?? true,
+        imagenUrl: createTrabajadorTransactionalDto.imagenUrl,
+        idRol: { idRol: createTrabajadorTransactionalDto.idRol } as any,
+        idUsuario: { idUsuario: nuevoUsuario.usuario.idUsuario } as any,
+      });
+
+      trabajadorCreado = await queryRunner.manager.save(trabajador);
+
+      // 3. Crear sueldo dentro de la misma transacción      
+      const sueldoEntity = queryRunner.manager.create(SueldoTrabajador, {
+        idTrabajador: { idTrabajador: trabajadorCreado.idTrabajador } as any,
+        sueldoBase: createTrabajadorTransactionalDto.sueldoBase.sueldoBase,
+        bonificacionFamiliar: createTrabajadorTransactionalDto.sueldoBase.bonificacionFamiliar,
+        asignacionFamiliar: createTrabajadorTransactionalDto.sueldoBase.asignacionFamiliar,
+        fechaVigenciaDesde: createTrabajadorTransactionalDto.sueldoBase.fechaVigenciaDesde,
+        fechaVigenciaHasta: createTrabajadorTransactionalDto.sueldoBase.fechaVigenciaHasta,
+        estaActivo: createTrabajadorTransactionalDto.sueldoBase.estaActivo ?? true,
+        observaciones: createTrabajadorTransactionalDto.sueldoBase.observaciones,
+        creadoPor: { idTrabajador: currentUserId || trabajadorCreado.idTrabajador } as any,
+      });
+
+      const sueldoCreado = await queryRunner.manager.save(sueldoEntity);
+      sueldo = { sueldo: sueldoCreado };
+
+      const fechaInicioContrato = sueldoCreado.fechaVigenciaDesde;
+      const fechaFinContrato = sueldoCreado.fechaVigenciaHasta;
+      const sueldoBase = sueldoCreado.sueldoBase;
+
+      // 4. Crear contrato dentro de la misma transacción      
+      const contratoEntity = queryRunner.manager.create(ContratoTrabajador, {
+        idTrabajador2: { idTrabajador: trabajadorCreado.idTrabajador } as any,
+        idTipoContrato: { idTipoContrato: createTrabajadorTransactionalDto.contrato.idTipoContrato } as any,
+        numeroContrato: createTrabajadorTransactionalDto.contrato.numeroContrato,
+        fechaInicio: fechaInicioContrato ?? createTrabajadorTransactionalDto.contrato.fechaInicio,
+        fechaFin: fechaFinContrato ?? createTrabajadorTransactionalDto.contrato.fechaFin,
+        fechaFinPeriodoPrueba: createTrabajadorTransactionalDto.contrato.fechaFinPeriodoPrueba,
+        sueldoContratado: sueldoBase,
+        jornadaLaboral: createTrabajadorTransactionalDto.contrato.jornadaLaboral,
+        horasSemanales: createTrabajadorTransactionalDto.contrato.horasSemanales,
+        cargoContrato: createTrabajadorTransactionalDto.contrato.cargoContrato,
+        descripcionFunciones: createTrabajadorTransactionalDto.contrato.descripcionFunciones,
+        lugarTrabajo: createTrabajadorTransactionalDto.contrato.lugarTrabajo,
+        estadoContrato: createTrabajadorTransactionalDto.contrato.estadoContrato ?? 'activo',
+        archivoContratoUrl: createTrabajadorTransactionalDto.contrato.archivoContratoUrl,
+        archivoFirmadoUrl: createTrabajadorTransactionalDto.contrato.archivoFirmadoUrl,
+        renovacionAutomatica: createTrabajadorTransactionalDto.contrato.renovacionAutomatica ?? false,
+        diasAvisoRenovacion: createTrabajadorTransactionalDto.contrato.diasAvisoRenovacion,
+        fechaAprobacion: createTrabajadorTransactionalDto.contrato.fechaAprobacion,
+        creadoPor: { idTrabajador: currentUserId || trabajadorCreado.idTrabajador } as any,
+        aprobadoPor: { idTrabajador: currentUserId || trabajadorCreado.idTrabajador } as any,
+      });
+
+      const contratoCreado = await queryRunner.manager.save(contratoEntity);
+      contrato = contratoCreado;
+
+      // Si llegamos hasta aquí, todo salió bien - confirmar la transacción completa
+      await queryRunner.commitTransaction();
+
+    } catch (error) {
+      // Si cualquier paso falla, hacer rollback de TODA la transacción
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(
+        'Error en la creación transaccional: ' + error.message,
+      );
+    } finally {
+      // Liberar el queryRunner
+      await queryRunner.release();
+    }
+
+    // Cargar el trabajador completo con relaciones
+    const trabajadorCompleto = await this.trabajadorRepository.findOne({
+      where: { idTrabajador: trabajadorCreado.idTrabajador },
+      relations: ['idRol', 'idUsuario'],
+    });
+
+    if (!trabajadorCompleto) {
+      throw new BadRequestException('Error al cargar el trabajador creado');
+    }
+
+    return {
+      success: true,
+      message: `Trabajador creado correctamente con rol: ${rol.nombre}. ` +
+        `Usuario: ${createTrabajadorTransactionalDto.nroDocumento}, ` +
+        `Contraseña temporal: ${createTrabajadorTransactionalDto.nroDocumento}. ` +
+        `Sueldo base: ${createTrabajadorTransactionalDto.sueldoBase.sueldoBase}. ` +
+        `Contrato: ${createTrabajadorTransactionalDto.contrato.numeroContrato}`,
+      trabajador: trabajadorCompleto,
+      contrato: contrato,
+      sueldo: sueldo,
+    };
+  }
+
 
   async create(
     createTrabajadorDto: CreateTrabajadorDto,

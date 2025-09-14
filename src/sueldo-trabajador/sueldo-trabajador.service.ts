@@ -5,7 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, EntityManager } from 'typeorm';
 import { CreateSueldoTrabajadorDto } from './dto/create-sueldo-trabajador.dto';
 import { UpdateSueldoTrabajadorDto } from './dto/update-sueldo-trabajador.dto';
 import { SueldoTrabajador } from './entities/sueldo-trabajador.entity';

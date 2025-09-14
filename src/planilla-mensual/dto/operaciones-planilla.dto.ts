@@ -6,6 +6,9 @@ import {
   IsString,
   IsUUID,
   Length,
+  IsNumber,
+  Min,
+  Max,
 } from 'class-validator';
 
 export class AprobarPlanillaMensualDto {
@@ -73,18 +76,24 @@ export class GenerarPlanillaConTrabajadoresDto {
     description: 'Mes de la planilla (1-12)',
     example: 9,
   })
+  @IsNumber({}, { message: 'El mes debe ser un número' })
+  @Min(1, { message: 'El mes debe ser mayor a 0' })
+  @Max(12, { message: 'El mes debe ser menor o igual a 12' })
   mes: number;
 
   @ApiProperty({
     description: 'Año de la planilla',
     example: 2025,
   })
+  @IsNumber({}, { message: 'El año debe ser un número' })
+  @Min(2020, { message: 'El año debe ser mayor a 2020' })
   anio: number;
 
   @ApiProperty({
     description: 'Fecha programada para el pago',
     example: '2025-09-30',
   })
+  @IsDateString({}, { message: 'La fecha programada debe ser una fecha válida' })
   fechaPagoProgramada: string;
 
   @ApiProperty({
@@ -92,12 +101,15 @@ export class GenerarPlanillaConTrabajadoresDto {
     example: ['uuid1', 'uuid2', 'uuid3'],
     type: [String],
   })
+  @IsArray({ message: 'Los trabajadores deben ser un array' })
+  @IsUUID(4, { each: true, message: 'Cada ID de trabajador debe ser un UUID válido' })
   trabajadores: string[];
 
   @ApiProperty({
     description: 'ID del trabajador que genera la planilla',
     example: 'uuid-del-generador',
   })
+  @IsUUID(4, { message: 'El ID del generador debe ser un UUID válido' })
   generadoPor: string;
 }
 
