@@ -456,6 +456,8 @@ export class MatriculaService {
         idMatricula: true,
         fechaIngreso: true,
         costoMatricula: true,
+        metodoPago: true,
+        voucherImg: true,
         idEstudiante: {
           idEstudiante: true,
           nombre: true,
