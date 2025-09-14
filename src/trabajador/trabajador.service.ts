@@ -13,7 +13,7 @@ import { Trabajador } from './entities/trabajador.entity';
 import { DataSource, Repository, In } from 'typeorm';
 import { UsuarioService } from '../usuario/usuario.service';
 import { Rol } from '../rol/entities/rol.entity';
-import { UserRole } from '../enums/roles.enum';
+import { UserRole } from '../enums/roles.enum';  
 import { SueldoTrabajador } from 'src/sueldo-trabajador/entities/sueldo-trabajador.entity';
 import { ContratoTrabajador } from 'src/contrato-trabajador/entities/contrato-trabajador.entity';
 
@@ -417,5 +417,13 @@ export class TrabajadorService {
         `Error al buscar aulas por trabajador: ${error.message}`,
       );
     }
+  }
+
+  async findTrabajadorSinDetallePlanilla() {
+    return await this.trabajadorRepository.createQueryBuilder('trabajador')
+      .leftJoin('trabajador.detallePlanillas', 'detallePlanilla')
+      .where('detallePlanilla.idDetallePlanilla IS NULL')
+      .andWhere('trabajador.estaActivo = :estaActivo')
+      .getMany();
   }
 }

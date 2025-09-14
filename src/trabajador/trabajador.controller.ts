@@ -47,6 +47,12 @@ export class TrabajadorController {
     return this.trabajadorService.findOne(id);
   }
 
+  @Get('')
+  @ApiOperation({ summary: 'Obtener trabajadores sin detalle de planilla asociado' })
+  findTrabajadorSinDetallePlanilla() {
+    return this.trabajadorService.findTrabajadorSinDetallePlanilla();
+  }
+
   @Get('aulas/:idTrabajador')
   @ApiOperation({
     summary:
