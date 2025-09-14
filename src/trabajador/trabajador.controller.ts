@@ -41,16 +41,10 @@ export class TrabajadorController {
     return this.trabajadorService.findAll();
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Obtener un trabajador específico por ID' })
-  findOne(@Param('id') id: string) {
-    return this.trabajadorService.findOne(id);
-  }
-
-  @Get('')
+  @Get('sin-planilla')
   @ApiOperation({ summary: 'Obtener trabajadores sin detalle de planilla asociado' })
-  findTrabajadorSinDetallePlanilla() {
-    return this.trabajadorService.findTrabajadorSinDetallePlanilla();
+  async findTrabajadorSinDetallePlanilla() {
+    return await this.trabajadorService.findTrabajadorSinDetallePlanilla();
   }
 
   @Get('aulas/:idTrabajador')
@@ -60,6 +54,12 @@ export class TrabajadorController {
   })
   findAulasPorTrabajador(@Param('idTrabajador') idTrabajador: string) {
     return this.trabajadorService.findAulasPorTrabajador(idTrabajador);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener un trabajador específico por ID' })
+  findOne(@Param('id') id: string) {
+    return this.trabajadorService.findOne(id);
   }
 
   @Patch(':id')

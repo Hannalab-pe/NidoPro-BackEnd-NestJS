@@ -423,7 +423,7 @@ export class TrabajadorService {
     return await this.trabajadorRepository.createQueryBuilder('trabajador')
       .leftJoin('trabajador.detallePlanillas', 'detallePlanilla')
       .where('detallePlanilla.idDetallePlanilla IS NULL')
-      .andWhere('trabajador.estaActivo = :estaActivo')
+      .andWhere('trabajador.estaActivo = :estaActivo', { estaActivo: true })
       .getMany();
   }
 }
