@@ -13,7 +13,7 @@ import { Trabajador } from './entities/trabajador.entity';
 import { DataSource, Repository, In } from 'typeorm';
 import { UsuarioService } from '../usuario/usuario.service';
 import { Rol } from '../rol/entities/rol.entity';
-import { UserRole } from '../enums/roles.enum';  
+import { UserRole } from '../enums/roles.enum';
 import { SueldoTrabajador } from 'src/sueldo-trabajador/entities/sueldo-trabajador.entity';
 import { ContratoTrabajador } from 'src/contrato-trabajador/entities/contrato-trabajador.entity';
 
@@ -424,6 +424,16 @@ export class TrabajadorService {
       .leftJoin('trabajador.detallePlanillas', 'detallePlanilla')
       .where('detallePlanilla.idDetallePlanilla IS NULL')
       .andWhere('trabajador.estaActivo = :estaActivo', { estaActivo: true })
+      .getMany();
+  }
+
+  async findTrabajadorSinDetallePorContratoPlanilla() {
+    return await this.trabajadorRepository.createQueryBuilder('trabajador')
+      .innerJoinAndSelect('trabajador.contratoTrabajadors3', 'contrato')
+      .innerJoinAndSelect('contrato.idTipoContrato', 'tipoContrato')
+      .leftJoin('trabajador.detallePlanillas', 'detallePlanilla')
+      .where('detallePlanilla.idDetallePlanilla IS NULL')
+      .andWhere('tipoContrato.nombreTipo = :nombreTipo', { nombreTipo: 'CONTRATO_PLANILLA' })
       .getMany();
   }
 }

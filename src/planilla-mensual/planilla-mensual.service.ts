@@ -129,6 +129,7 @@ export class PlanillaMensualService {
     await queryRunner.startTransaction();
 
     try {
+
       // 1. Verificar que no existe una planilla para el mismo mes y año
       const planillaExistente = await queryRunner.manager.findOne(PlanillaMensual, {
         where: {

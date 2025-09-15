@@ -35,16 +35,24 @@ export class TrabajadorController {
     return this.trabajadorService.createTrabajadorTransactional(createTrabajadorTransactionalDto);
   }
 
+
+  
   @Get()
   @ApiOperation({ summary: 'Obtener todos los trabajadores' })
   findAll() {
     return this.trabajadorService.findAll();
   }
-
+  
   @Get('sin-planilla')
   @ApiOperation({ summary: 'Obtener trabajadores sin detalle de planilla asociado' })
   async findTrabajadorSinDetallePlanilla() {
     return await this.trabajadorService.findTrabajadorSinDetallePlanilla();
+  }
+
+  @Get('tipo-contrato-planilla')
+  @ApiOperation({ summary: 'Obtener todos los trabajadores sin detalle pero por contrato Planilla' })
+  async findTrabajadorSinDetallePorContratoPlanilla() {
+    return await this.trabajadorService.findTrabajadorSinDetallePorContratoPlanilla();
   }
 
   @Get('aulas/:idTrabajador')
