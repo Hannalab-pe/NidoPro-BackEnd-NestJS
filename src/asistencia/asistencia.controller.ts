@@ -96,8 +96,8 @@ export class AsistenciaController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar una asistencia específica' })
-  update(@Param('id') id: string, @Body() updateAsistenciaDto: UpdateAsistenciaDto) {
-    const data = this.asistenciaService.update(id, updateAsistenciaDto);
+  async update(@Param('id') id: string, @Body() updateAsistenciaDto: UpdateAsistenciaDto) {
+    const data = await this.asistenciaService.update(id, updateAsistenciaDto);
     return {
       success: true,
       message: `Asistencia Actualizada Correctamente con el ID ${id}`,

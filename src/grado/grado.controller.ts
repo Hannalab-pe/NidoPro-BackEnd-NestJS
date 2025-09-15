@@ -50,8 +50,8 @@ export class GradoController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar un grado académico' })
-  update(@Param('id') id: string, @Body() updateGradoDto: UpdateGradoDto) {
-    const data = this.gradoService.update(id, updateGradoDto);
+  async update(@Param('id') id: string, @Body() updateGradoDto: UpdateGradoDto) {
+    const data = await this.gradoService.update(id, updateGradoDto);
     return {
       success: true,
       message: `Grado Actualizado Correctamente con el ID ${id}`,

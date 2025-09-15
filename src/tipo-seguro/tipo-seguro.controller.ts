@@ -16,7 +16,7 @@ import { UpdateTipoSeguroDto } from './dto/update-tipo-seguro.dto';
 @ApiTags('Tipos de Seguro')
 @Controller('tipo-seguro')
 export class TipoSeguroController {
-  constructor(private readonly tipoSeguroService: TipoSeguroService) {}
+  constructor(private readonly tipoSeguroService: TipoSeguroService) { }
 
   @Post()
   @ApiOperation({ summary: 'Crear un nuevo tipo de seguro' })
@@ -28,8 +28,8 @@ export class TipoSeguroController {
     status: 409,
     description: 'Ya existe un tipo de seguro con ese nombre',
   })
-  create(@Body() createTipoSeguroDto: CreateTipoSeguroDto) {
-    return this.tipoSeguroService.create(createTipoSeguroDto);
+  async create(@Body() createTipoSeguroDto: CreateTipoSeguroDto) {
+    return await this.tipoSeguroService.create(createTipoSeguroDto);
   }
 
   @Get()
@@ -38,8 +38,8 @@ export class TipoSeguroController {
     status: 200,
     description: 'Lista de tipos de seguro obtenida correctamente',
   })
-  findAll() {
-    return this.tipoSeguroService.findAll();
+  async findAll() {
+    return await this.tipoSeguroService.findAll();
   }
 
   @Get(':id')
@@ -58,8 +58,8 @@ export class TipoSeguroController {
     status: 404,
     description: 'Tipo de seguro no encontrado',
   })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.tipoSeguroService.findOne(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.tipoSeguroService.findOne(id);
   }
 
   @Patch(':id')
@@ -82,11 +82,11 @@ export class TipoSeguroController {
     status: 409,
     description: 'Ya existe un tipo de seguro con ese nombre',
   })
-  update(
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateTipoSeguroDto: UpdateTipoSeguroDto,
   ) {
-    return this.tipoSeguroService.update(id, updateTipoSeguroDto);
+    return await this.tipoSeguroService.update(id, updateTipoSeguroDto);
   }
 
   @Delete(':id')
@@ -105,7 +105,7 @@ export class TipoSeguroController {
     status: 404,
     description: 'Tipo de seguro no encontrado',
   })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.tipoSeguroService.remove(id);
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.tipoSeguroService.remove(id);
   }
 }

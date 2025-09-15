@@ -11,31 +11,31 @@ export class ContactoEmergenciaController {
 
   @Post()
   @ApiOperation({ summary: 'Registrar un nuevo contacto de emergencia' })
-  create(@Body() createContactoEmergenciaDto: CreateContactoEmergenciaDto) {
-    return this.contactoEmergenciaService.create(createContactoEmergenciaDto);
+  async create(@Body() createContactoEmergenciaDto: CreateContactoEmergenciaDto) {
+    return await this.contactoEmergenciaService.create(createContactoEmergenciaDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los contactos de emergencia' })
-  findAll() {
-    return this.contactoEmergenciaService.findAll();
+  async findAll() {
+    return await this.contactoEmergenciaService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un contacto de emergencia específico por ID' })
-  findOne(@Param('id') id: string) {
-    return this.contactoEmergenciaService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.contactoEmergenciaService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar información de un contacto de emergencia' })
-  update(@Param('id') id: string, @Body() updateContactoEmergenciaDto: UpdateContactoEmergenciaDto) {
-    return this.contactoEmergenciaService.update(id, updateContactoEmergenciaDto);
+  async update(@Param('id') id: string, @Body() updateContactoEmergenciaDto: UpdateContactoEmergenciaDto) {
+    return await this.contactoEmergenciaService.update(id, updateContactoEmergenciaDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar un contacto de emergencia' })
-  remove(@Param('id') id: string) {
-    return this.contactoEmergenciaService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.contactoEmergenciaService.remove(id);
   }
 }

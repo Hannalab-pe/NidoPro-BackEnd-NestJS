@@ -51,8 +51,8 @@ export class CursoController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar un curso específico' })
-  update(@Param('id') id: string, @Body() updateCursoDto: UpdateCursoDto) {
-    const data = this.cursoService.update(id, updateCursoDto);
+  async update(@Param('id') id: string, @Body() updateCursoDto: UpdateCursoDto) {
+    const data = await this.cursoService.update(id, updateCursoDto);
     return {
       success: true,
       message: `Curso Actualizado Correctamente con el ID ${id}`,

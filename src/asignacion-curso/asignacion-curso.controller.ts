@@ -11,31 +11,31 @@ export class AsignacionCursoController {
 
   @Post()
   @ApiOperation({ summary: 'Asignar un curso a un docente' })
-  create(@Body() createAsignacionCursoDto: CreateAsignacionCursoDto) {
-    return this.asignacionCursoService.create(createAsignacionCursoDto);
+  async create(@Body() createAsignacionCursoDto: CreateAsignacionCursoDto) {
+    return await this.asignacionCursoService.create(createAsignacionCursoDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todas las asignaciones de cursos' })
-  findAll() {
-    return this.asignacionCursoService.findAll();
+  async findAll() {
+    return await this.asignacionCursoService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener una asignación de curso específica por ID' })
-  findOne(@Param('id') id: string) {
-    return this.asignacionCursoService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.asignacionCursoService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar una asignación de curso' })
-  update(@Param('id') id: string, @Body() updateAsignacionCursoDto: UpdateAsignacionCursoDto) {
-    return this.asignacionCursoService.update(id, updateAsignacionCursoDto);
+  async update(@Param('id') id: string, @Body() updateAsignacionCursoDto: UpdateAsignacionCursoDto) {
+    return await this.asignacionCursoService.update(id, updateAsignacionCursoDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Desactivar una asignación de curso (eliminación lógica)' })
-  remove(@Param('id') id: string) {
-    return this.asignacionCursoService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.asignacionCursoService.remove(id);
   }
 }

@@ -14,39 +14,39 @@ export class AnotacionesEstudianteController {
   @ApiResponse({ status: 201, description: 'Anotación creada correctamente.' })
   @ApiResponse({ status: 400, description: 'Datos inválidos.' })
   @ApiResponse({ status: 404, description: 'Trabajador, estudiante o curso no encontrado.' })
-  create(@Body() createAnotacionesEstudianteDto: CreateAnotacionesEstudianteDto) {
-    return this.anotacionesEstudianteService.create(createAnotacionesEstudianteDto);
+  async create(@Body() createAnotacionesEstudianteDto: CreateAnotacionesEstudianteDto) {
+    return await this.anotacionesEstudianteService.create(createAnotacionesEstudianteDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todas las anotaciones de estudiantes' })
   @ApiResponse({ status: 200, description: 'Lista de anotaciones obtenida correctamente.' })
-  findAll() {
-    return this.anotacionesEstudianteService.findAll();
+  async findAll() {
+    return await this.anotacionesEstudianteService.findAll();
   }
 
   @Get('estudiante/:idEstudiante')
   @ApiOperation({ summary: 'Obtener anotaciones por estudiante' })
   @ApiParam({ name: 'idEstudiante', description: 'ID del estudiante' })
   @ApiResponse({ status: 200, description: 'Anotaciones del estudiante obtenidas correctamente.' })
-  findByEstudiante(@Param('idEstudiante') idEstudiante: string) {
-    return this.anotacionesEstudianteService.findByEstudiante(idEstudiante);
+  async findByEstudiante(@Param('idEstudiante') idEstudiante: string) {
+    return await this.anotacionesEstudianteService.findByEstudiante(idEstudiante);
   }
 
   @Get('trabajador/:idTrabajador')
   @ApiOperation({ summary: 'Obtener anotaciones por trabajador (docente)' })
   @ApiParam({ name: 'idTrabajador', description: 'ID del trabajador' })
   @ApiResponse({ status: 200, description: 'Anotaciones del trabajador obtenidas correctamente.' })
-  findByTrabajador(@Param('idTrabajador') idTrabajador: string) {
-    return this.anotacionesEstudianteService.findByTrabajador(idTrabajador);
+  async findByTrabajador(@Param('idTrabajador') idTrabajador: string) {
+    return await this.anotacionesEstudianteService.findByTrabajador(idTrabajador);
   }
 
   @Get('curso/:idCurso')
   @ApiOperation({ summary: 'Obtener anotaciones por curso' })
   @ApiParam({ name: 'idCurso', description: 'ID del curso' })
   @ApiResponse({ status: 200, description: 'Anotaciones del curso obtenidas correctamente.' })
-  findByCurso(@Param('idCurso') idCurso: string) {
-    return this.anotacionesEstudianteService.findByCurso(idCurso);
+  async findByCurso(@Param('idCurso') idCurso: string) {
+    return await this.anotacionesEstudianteService.findByCurso(idCurso);
   }
 
   @Get(':id')
@@ -54,8 +54,8 @@ export class AnotacionesEstudianteController {
   @ApiParam({ name: 'id', description: 'ID de la anotación' })
   @ApiResponse({ status: 200, description: 'Anotación obtenida correctamente.' })
   @ApiResponse({ status: 404, description: 'Anotación no encontrada.' })
-  findOne(@Param('id') id: string) {
-    return this.anotacionesEstudianteService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.anotacionesEstudianteService.findOne(id);
   }
 
   @Patch(':id')
@@ -63,8 +63,8 @@ export class AnotacionesEstudianteController {
   @ApiParam({ name: 'id', description: 'ID de la anotación' })
   @ApiResponse({ status: 200, description: 'Anotación actualizada correctamente.' })
   @ApiResponse({ status: 404, description: 'Anotación no encontrada.' })
-  update(@Param('id') id: string, @Body() updateAnotacionesEstudianteDto: UpdateAnotacionesEstudianteDto) {
-    return this.anotacionesEstudianteService.update(id, updateAnotacionesEstudianteDto);
+  async update(@Param('id') id: string, @Body() updateAnotacionesEstudianteDto: UpdateAnotacionesEstudianteDto) {
+    return await this.anotacionesEstudianteService.update(id, updateAnotacionesEstudianteDto);
   }
 
   @Delete(':id')
@@ -72,7 +72,7 @@ export class AnotacionesEstudianteController {
   @ApiParam({ name: 'id', description: 'ID de la anotación' })
   @ApiResponse({ status: 200, description: 'Anotación eliminada correctamente.' })
   @ApiResponse({ status: 404, description: 'Anotación no encontrada.' })
-  remove(@Param('id') id: string) {
-    return this.anotacionesEstudianteService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.anotacionesEstudianteService.remove(id);
   }
 }

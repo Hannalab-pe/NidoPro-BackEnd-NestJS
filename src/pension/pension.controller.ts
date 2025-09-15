@@ -51,8 +51,8 @@ export class PensionController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar información de una pensión (estado de pago, monto, etc.)' })
-  update(@Param('id') id: string, @Body() updatePensionDto: UpdatePensionDto) {
-    const data = this.pensionService.update(id, updatePensionDto);
+  async update(@Param('id') id: string, @Body() updatePensionDto: UpdatePensionDto) {
+    const data = await this.pensionService.update(id, updatePensionDto);
     return {
       success: true,
       message: `Pensión Actualizada Correctamente con el ID ${id}`,

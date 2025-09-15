@@ -19,35 +19,35 @@ export class RolController {
   @Post()
   @ApiOperation({ summary: 'Crear un nuevo rol del sistema (Solo directora)' })
   @Roles(UserRole.DIRECTORA) // Solo directora puede crear roles
-  create(@Body() createRolDto: CreateRolDto, @CurrentUser() user: any) {
-    return this.rolService.create(createRolDto);
+  async create(@Body() createRolDto: CreateRolDto, @CurrentUser() user: any) {
+    return await this.rolService.create(createRolDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los roles del sistema (Directora y secretaria)' })
   @Roles(UserRole.DIRECTORA, UserRole.SECRETARIA) // Solo directora y secretaria pueden ver roles
-  findAll(@CurrentUser() user: any) {
-    return this.rolService.findAll();
+  async findAll(@CurrentUser() user: any) {
+    return await this.rolService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un rol específico por ID (Directora y secretaria)' })
   @Roles(UserRole.DIRECTORA, UserRole.SECRETARIA)
-  findOne(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.rolService.findOne(id);
+  async findOne(@Param('id') id: string, @CurrentUser() user: any) {
+    return await this.rolService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar un rol del sistema (Solo directora)' })
   @Roles(UserRole.DIRECTORA) // Solo directora puede actualizar roles
-  update(@Param('id') id: string, @Body() updateRolDto: UpdateRolDto, @CurrentUser() user: any) {
-    return this.rolService.update(id, updateRolDto);
+  async update(@Param('id') id: string, @Body() updateRolDto: UpdateRolDto, @CurrentUser() user: any) {
+    return await this.rolService.update(id, updateRolDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar un rol del sistema (Solo directora)' })
   @Roles(UserRole.DIRECTORA) // Solo directora puede eliminar roles
-  remove(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.rolService.remove(id);
+  async remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return await this.rolService.remove(id);
   }
 }

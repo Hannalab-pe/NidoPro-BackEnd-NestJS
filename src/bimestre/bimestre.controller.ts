@@ -12,15 +12,15 @@ export class BimestreController {
   @Post()
   @ApiOperation({ summary: 'Crear un bimestre manualmente' })
   @ApiResponse({ status: 201, description: 'Bimestre creado correctamente' })
-  create(@Body() createBimestreDto: CreateBimestreDto) {
-    return this.bimestreService.create(createBimestreDto);
+  async create(@Body() createBimestreDto: CreateBimestreDto) {
+    return await this.bimestreService.create(createBimestreDto);
   }
 
   @Post('generar-automaticos/:idPeriodoEscolar')
   @ApiOperation({ summary: 'Generar automáticamente todos los bimestres de un período' })
   @ApiResponse({ status: 201, description: 'Bimestres generados automáticamente' })
-  generarAutomaticos(@Param('idPeriodoEscolar') idPeriodoEscolar: string) {
-    return this.bimestreService.generarBimestresAutomaticos(idPeriodoEscolar);
+  async generarAutomaticos(@Param('idPeriodoEscolar') idPeriodoEscolar: string) {
+    return await this.bimestreService.generarBimestresAutomaticos(idPeriodoEscolar);
   }
 
  
@@ -28,59 +28,59 @@ export class BimestreController {
   @Get('fechas-sugeridas/:idPeriodoEscolar/:numeroBimestre')
   @ApiOperation({ summary: 'Obtener fechas sugeridas para un bimestre' })
   @ApiResponse({ status: 200, description: 'Fechas sugeridas obtenidas correctamente' })
-  obtenerFechasSugeridas(
+  async obtenerFechasSugeridas(
     @Param('idPeriodoEscolar') idPeriodoEscolar: string,
     @Param('numeroBimestre') numeroBimestre: string
   ) {
-    return this.bimestreService.obtenerFechasSugeridas(idPeriodoEscolar, +numeroBimestre);
+    return await this.bimestreService.obtenerFechasSugeridas(idPeriodoEscolar, +numeroBimestre);
   }
 
   @Get('periodo/:idPeriodoEscolar')
   @ApiOperation({ summary: 'Obtener bimestres por período escolar' })
   @ApiResponse({ status: 200, description: 'Bimestres encontrados correctamente' })
-  findByPeriodo(@Param('idPeriodoEscolar') idPeriodoEscolar: string) {
-    return this.bimestreService.findByPeriodo(idPeriodoEscolar);
+  async findByPeriodo(@Param('idPeriodoEscolar') idPeriodoEscolar: string) {
+    return await this.bimestreService.findByPeriodo(idPeriodoEscolar);
   }
 
   @Get('actual')
   @ApiOperation({ summary: 'Obtener el bimestre actualmente activo' })
   @ApiResponse({ status: 200, description: 'Bimestre actual encontrado' })
-  findBimestreActual() {
-    return this.bimestreService.findBimestreActual();
+  async findBimestreActual() {
+    return await this.bimestreService.findBimestreActual();
   }
 
   @Post('activar/:id')
   @ApiOperation({ summary: 'Activar un bimestre específico' })
   @ApiResponse({ status: 200, description: 'Bimestre activado correctamente' })
-  activar(@Param('id') id: string) {
-    return this.bimestreService.activar(id);
+  async activar(@Param('id') id: string) {
+    return await this.bimestreService.activar(id);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los bimestres' })
   @ApiResponse({ status: 200, description: 'Bimestres encontrados correctamente' })
-  findAll() {
-    return this.bimestreService.findAll();
+  async findAll() {
+    return await this.bimestreService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un bimestre por ID' })
   @ApiResponse({ status: 200, description: 'Bimestre encontrado' })
-  findOne(@Param('id') id: string) {
-    return this.bimestreService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.bimestreService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar un bimestre' })
   @ApiResponse({ status: 200, description: 'Bimestre actualizado correctamente' })
-  update(@Param('id') id: string, @Body() updateBimestreDto: UpdateBimestreDto) {
-    return this.bimestreService.update(id, updateBimestreDto);
+  async update(@Param('id') id: string, @Body() updateBimestreDto: UpdateBimestreDto) {
+    return await this.bimestreService.update(id, updateBimestreDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar un bimestre' })
   @ApiResponse({ status: 200, description: 'Bimestre eliminado correctamente' })
-  remove(@Param('id') id: string) {
-    return this.bimestreService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.bimestreService.remove(id);
   }
 }

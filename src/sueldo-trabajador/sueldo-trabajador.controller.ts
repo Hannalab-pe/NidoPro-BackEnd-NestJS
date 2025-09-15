@@ -25,15 +25,15 @@ export class SueldoTrabajadorController {
   @ApiResponse({ status: 201, description: 'Sueldo creado correctamente' })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
   @ApiResponse({ status: 404, description: 'Trabajador no encontrado' })
-  create(@Body() createSueldoTrabajadorDto: CreateSueldoTrabajadorDto) {
-    return this.sueldoTrabajadorService.create(createSueldoTrabajadorDto);
+  async create(@Body() createSueldoTrabajadorDto: CreateSueldoTrabajadorDto) {
+    return await this.sueldoTrabajadorService.create(createSueldoTrabajadorDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los sueldos de trabajadores' })
   @ApiResponse({ status: 200, description: 'Sueldos obtenidos correctamente' })
-  findAll() {
-    return this.sueldoTrabajadorService.findAll();
+  async findAll() {
+    return await this.sueldoTrabajadorService.findAll();
   }
 
   @Get(':id')
@@ -41,8 +41,8 @@ export class SueldoTrabajadorController {
   @ApiParam({ name: 'id', description: 'ID del sueldo de trabajador' })
   @ApiResponse({ status: 200, description: 'Sueldo obtenido correctamente' })
   @ApiResponse({ status: 404, description: 'Sueldo no encontrado' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.sueldoTrabajadorService.findOne(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.sueldoTrabajadorService.findOne(id);
   }
 
   @Patch(':id')
@@ -51,11 +51,11 @@ export class SueldoTrabajadorController {
   @ApiResponse({ status: 200, description: 'Sueldo actualizado correctamente' })
   @ApiResponse({ status: 404, description: 'Sueldo no encontrado' })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
-  update(
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateSueldoTrabajadorDto: UpdateSueldoTrabajadorDto,
   ) {
-    return this.sueldoTrabajadorService.update(id, updateSueldoTrabajadorDto);
+    return await this.sueldoTrabajadorService.update(id, updateSueldoTrabajadorDto);
   }
 
   @Delete(':id')
@@ -63,7 +63,7 @@ export class SueldoTrabajadorController {
   @ApiParam({ name: 'id', description: 'ID del sueldo de trabajador' })
   @ApiResponse({ status: 200, description: 'Sueldo eliminado correctamente' })
   @ApiResponse({ status: 404, description: 'Sueldo no encontrado' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.sueldoTrabajadorService.remove(id);
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.sueldoTrabajadorService.remove(id);
   }
 }

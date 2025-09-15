@@ -11,43 +11,43 @@ export class PeriodoEscolarController {
 
   @Post()
   @ApiOperation({ summary: 'Crear un nuevo período escolar' })
-  create(@Body() createPeriodoEscolarDto: CreatePeriodoEscolarDto) {
-    return this.periodoEscolarService.create(createPeriodoEscolarDto);
+  async create(@Body() createPeriodoEscolarDto: CreatePeriodoEscolarDto) {
+    return await this.periodoEscolarService.create(createPeriodoEscolarDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los períodos escolares' })
-  findAll() {
-    return this.periodoEscolarService.findAll();
+  async findAll() {
+    return await this.periodoEscolarService.findAll();
   }
 
   @Get('actual')
   @ApiOperation({ summary: 'Obtener el período escolar actual (activo)' })
-  findActual() {
-    return this.periodoEscolarService.findPeriodoActual();
+  async findActual() {
+    return await this.periodoEscolarService.findPeriodoActual();
   }
 
   @Get('anio/:anio')
   @ApiOperation({ summary: 'Buscar período escolar por año' })
-  findByAnio(@Param('anio') anio: number) {
-    return this.periodoEscolarService.findByAnio(anio);
+  async findByAnio(@Param('anio') anio: number) {
+    return await this.periodoEscolarService.findByAnio(anio);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un período escolar por ID' })
-  findOne(@Param('id') id: string) {
-    return this.periodoEscolarService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.periodoEscolarService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar un período escolar' })
-  update(@Param('id') id: string, @Body() updatePeriodoEscolarDto: UpdatePeriodoEscolarDto) {
-    return this.periodoEscolarService.update(id, updatePeriodoEscolarDto);
+  async update(@Param('id') id: string, @Body() updatePeriodoEscolarDto: UpdatePeriodoEscolarDto) {
+    return await this.periodoEscolarService.update(id, updatePeriodoEscolarDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar un período escolar' })
-  remove(@Param('id') id: string) {
-    return this.periodoEscolarService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.periodoEscolarService.remove(id);
   }
 }

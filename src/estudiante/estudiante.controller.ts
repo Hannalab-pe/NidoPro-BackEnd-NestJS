@@ -19,20 +19,20 @@ export class EstudianteController {
 
   @Post()
   @ApiOperation({ summary: 'Registrar un nuevo estudiante' })
-  create(@Body() createEstudianteDto: CreateEstudianteDto) {
-    return this.estudianteService.create(createEstudianteDto);
+  async create(@Body() createEstudianteDto: CreateEstudianteDto) {
+    return await this.estudianteService.create(createEstudianteDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los estudiantes' })
-  findAll() {
-    return this.estudianteService.findAll();
+  async findAll() {
+    return await this.estudianteService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un estudiante específico por ID' })
-  findOne(@Param('id') id: string) {
-    return this.estudianteService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.estudianteService.findOne(id);
   }
 
   @Get('aula/:idAula')
@@ -40,22 +40,22 @@ export class EstudianteController {
     summary:
       'Estudiantes por Aula - Obtener todos los estudiantes de un aula específica',
   })
-  findEstudiantesPorAula(@Param('idAula') idAula: string) {
-    return this.estudianteService.findEstudiantesPorAula(idAula);
+  async findEstudiantesPorAula(@Param('idAula') idAula: string) {
+    return await this.estudianteService.findEstudiantesPorAula(idAula);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar información de un estudiante' })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateEstudianteDto: UpdateEstudianteDto,
   ) {
-    return this.estudianteService.update(id, updateEstudianteDto);
+    return await this.estudianteService.update(id, updateEstudianteDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar un estudiante (desactivar)' })
-  remove(@Param('id') id: string) {
-    return this.estudianteService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.estudianteService.remove(id);
   }
 }

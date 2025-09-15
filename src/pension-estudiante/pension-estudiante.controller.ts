@@ -31,8 +31,8 @@ export class PensionEstudianteController {
   @Post()
   @ApiOperation({ summary: 'Crear una pensión individual' })
   @ApiResponse({ status: 201, description: 'Pensión creada exitosamente' })
-  create(@Body() createPensionEstudianteDto: CreatePensionEstudianteDto) {
-    return this.pensionEstudianteService.create(
+  async create(@Body() createPensionEstudianteDto: CreatePensionEstudianteDto) {
+    return await this.pensionEstudianteService.create(
       createPensionEstudianteDto,
       createPensionEstudianteDto.registradoPorId
     );
@@ -51,7 +51,7 @@ export class PensionEstudianteController {
     description: 'ID del trabajador que registra las pensiones (temporal, debería venir del JWT)',
     example: '123e4567-e89b-12d3-a456-426614174000'
   })
-  configurarPensionesPorAnioOptimizada(
+  async configurarPensionesPorAnioOptimizada(
     @Body() configuracion: ConfiguracionPensionesDto,
     // TODO: Obtener registradoPorId desde JWT del usuario autenticado
     @Query('registradoPorId') registradoPorId?: string
@@ -59,7 +59,7 @@ export class PensionEstudianteController {
     // Temporal: usar un ID por defecto si no se proporciona
     const trabajadorId = registradoPorId || 'temp-trabajador-id';
 
-    return this.pensionEstudianteService.generarPensionesPorAnioEscolarOptimizada(
+    return await this.pensionEstudianteService.generarPensionesPorAnioEscolarOptimizada(
       configuracion.anioEscolar,
       configuracion,
       trabajadorId
@@ -71,11 +71,11 @@ export class PensionEstudianteController {
   @ApiOperation({ summary: 'Obtener pensiones de los hijos de un apoderado' })
   @ApiParam({ name: 'apoderadoId', description: 'ID del apoderado' })
   @ApiResponse({ status: 200, description: 'Pensiones encontradas' })
-  findByApoderado(
+  async findByApoderado(
     @Param('apoderadoId', ParseUUIDPipe) apoderadoId: string,
     @Query() filters?: FilterPensionDto
   ) {
-    return this.pensionEstudianteService.findByApoderado(apoderadoId, filters);
+    return await this.pensionEstudianteService.findByApoderado(apoderadoId, filters);
   }
 
   // 4. SUBIR VOUCHER DE PAGO (Para padres)
@@ -85,7 +85,7 @@ export class PensionEstudianteController {
   @ApiOperation({ summary: 'Subir voucher de pago de pensión' })
   @ApiParam({ name: 'id', description: 'ID de la pensión' })
   @ApiResponse({ status: 200, description: 'Voucher subido exitosamente' })
-  uploadVoucher(
+  async uploadVoucher(
     @Param('id', ParseUUIDPipe) pensionId: string,
     @Body() uploadData: UploadVoucherDto,
     @UploadedFile() file: any
@@ -97,15 +97,15 @@ export class PensionEstudianteController {
       throw new Error('No se pudo procesar el archivo');
     }
 
-    return this.pensionEstudianteService.uploadVoucher(pensionId, uploadData, fileUrl);
+    return await this.pensionEstudianteService.uploadVoucher(pensionId, uploadData, fileUrl);
   }
 
   // 5. VER PAGOS PENDIENTES DE VERIFICACIÓN (Para admin)
   @Get('pending-verification')
   @ApiOperation({ summary: 'Obtener pagos pendientes de verificación' })
   @ApiResponse({ status: 200, description: 'Pagos pendientes encontrados' })
-  findPendingVerifications() {
-    return this.pensionEstudianteService.findPendingVerifications();
+  async findPendingVerifications() {
+    return await this.pensionEstudianteService.findPendingVerifications();
   }
 
   // 6. VERIFICAR PAGO (Para admin)
@@ -113,11 +113,11 @@ export class PensionEstudianteController {
   @ApiOperation({ summary: 'Verificar o rechazar un pago' })
   @ApiParam({ name: 'id', description: 'ID de la pensión' })
   @ApiResponse({ status: 200, description: 'Pago verificado exitosamente' })
-  verifyPayment(
+  async verifyPayment(
     @Param('id', ParseUUIDPipe) pensionId: string,
     @Body() verifyData: VerifyPaymentDto
   ) {
-    return this.pensionEstudianteService.verifyPayment(pensionId, verifyData, verifyData.registradoPor);
+    return await this.pensionEstudianteService.verifyPayment(pensionId, verifyData, verifyData.registradoPor);
   }
 
   // 6.1. VERIFICAR PAGOS MASIVOS (Para admin)
@@ -129,16 +129,16 @@ export class PensionEstudianteController {
   @ApiResponse({ status: 200, description: 'Pagos verificados masivamente con registro detallado' })
   @ApiResponse({ status: 400, description: 'Error en validación de datos' })
   @ApiResponse({ status: 404, description: 'Algunas pensiones no encontradas' })
-  verifyPaymentMasivo(@Body() verifyData: VerifyPaymentMasivoDto) {
-    return this.pensionEstudianteService.verifyPaymentMasivo(verifyData, verifyData.registradoPor);
+  async verifyPaymentMasivo(@Body() verifyData: VerifyPaymentMasivoDto) {
+    return await this.pensionEstudianteService.verifyPaymentMasivo(verifyData, verifyData.registradoPor);
   }
 
   // 7. MARCAR PENSIONES VENCIDAS (Cron job o admin)
   @Post('mark-overdue')
   @ApiOperation({ summary: 'Marcar pensiones vencidas automáticamente' })
   @ApiResponse({ status: 200, description: 'Pensiones vencidas marcadas' })
-  markOverduePensions() {
-    return this.pensionEstudianteService.markOverduePensions();
+  async markOverduePensions() {
+    return await this.pensionEstudianteService.markOverduePensions();
   }
 
   // 8. LISTAR TODAS LAS PENSIONES CON FILTROS
@@ -148,8 +148,8 @@ export class PensionEstudianteController {
   @ApiQuery({ name: 'anio', required: false })
   @ApiQuery({ name: 'mes', required: false })
   @ApiResponse({ status: 200, description: 'Pensiones encontradas' })
-  findAll(@Query() filters?: FilterPensionDto) {
-    return this.pensionEstudianteService.findAll(filters);
+  async findAll(@Query() filters?: FilterPensionDto) {
+    return await this.pensionEstudianteService.findAll(filters);
   }
 
   // 9. OBTENER UNA PENSIÓN POR ID
@@ -157,8 +157,8 @@ export class PensionEstudianteController {
   @ApiOperation({ summary: 'Obtener una pensión por ID' })
   @ApiParam({ name: 'id', description: 'ID de la pensión' })
   @ApiResponse({ status: 200, description: 'Pensión encontrada' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.pensionEstudianteService.findOne(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.pensionEstudianteService.findOne(id);
   }
 
   // 10. ACTUALIZAR PENSIÓN
@@ -166,11 +166,11 @@ export class PensionEstudianteController {
   @ApiOperation({ summary: 'Actualizar una pensión' })
   @ApiParam({ name: 'id', description: 'ID de la pensión' })
   @ApiResponse({ status: 200, description: 'Pensión actualizada exitosamente' })
-  update(
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updatePensionEstudianteDto: UpdatePensionEstudianteDto
   ) {
-    return this.pensionEstudianteService.update(id, updatePensionEstudianteDto);
+    return await this.pensionEstudianteService.update(id, updatePensionEstudianteDto);
   }
 
   // 11. ELIMINAR PENSIÓN
@@ -178,8 +178,8 @@ export class PensionEstudianteController {
   @ApiOperation({ summary: 'Eliminar una pensión' })
   @ApiParam({ name: 'id', description: 'ID de la pensión' })
   @ApiResponse({ status: 200, description: 'Pensión eliminada exitosamente' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.pensionEstudianteService.remove(id);
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.pensionEstudianteService.remove(id);
   }
 
   // 12. 🔥 NUEVO: PROCESAR INGRESOS MASIVOS A CAJA SIMPLE
@@ -192,13 +192,13 @@ export class PensionEstudianteController {
   @ApiQuery({ name: 'mes', required: true, description: 'Mes a procesar (1-12)', example: 9 })
   @ApiQuery({ name: 'anio', required: true, description: 'Año a procesar', example: 2025 })
   @ApiQuery({ name: 'registradoPorId', required: false, description: 'ID del trabajador que registra' })
-  procesarIngresosMasivos(
+  async procesarIngresosMasivos(
     @Query('mes') mes: number,
     @Query('anio') anio: number,
     @Query('registradoPorId') registradoPorId?: string
   ) {
     const trabajadorId = registradoPorId || 'temp-trabajador-id';
-    return this.pensionEstudianteService.procesarIngresosMasivosPensiones(mes, anio, trabajadorId);
+    return await this.pensionEstudianteService.procesarIngresosMasivosPensiones(mes, anio, trabajadorId);
   }
 
   // 13. 🔥 NUEVO: REPORTE DE CONCILIACIÓN PENSIONES vs CAJA SIMPLE  
@@ -210,11 +210,11 @@ export class PensionEstudianteController {
   @ApiParam({ name: 'mes', description: 'Mes a verificar (1-12)' })
   @ApiParam({ name: 'anio', description: 'Año a verificar' })
   @ApiResponse({ status: 200, description: 'Reporte de conciliación generado' })
-  generarReporteConciliacion(
+  async generarReporteConciliacion(
     @Param('mes') mes: number,
     @Param('anio') anio: number
   ) {
-    return this.pensionEstudianteService.generarReporteConciliacion(mes, anio);
+    return await this.pensionEstudianteService.generarReporteConciliacion(mes, anio);
   }
 
   // 14. 🔥 NUEVO: INFORMACIÓN DEL PERIODO ESCOLAR
@@ -225,8 +225,8 @@ export class PensionEstudianteController {
   })
   @ApiQuery({ name: 'anioEscolar', required: false, description: 'Año escolar específico (opcional)' })
   @ApiResponse({ status: 200, description: 'Información del periodo escolar obtenida' })
-  obtenerInformacionPeriodoEscolar(@Query('anioEscolar') anioEscolar?: number) {
-    return this.pensionEstudianteService.obtenerInformacionPeriodoEscolar(anioEscolar);
+  async obtenerInformacionPeriodoEscolar(@Query('anioEscolar') anioEscolar?: number) {
+    return await this.pensionEstudianteService.obtenerInformacionPeriodoEscolar(anioEscolar);
   }
 
   // 15. 🔥 NUEVO: RESUMEN DE CONFIGURACIÓN DE PENSIONES
@@ -237,8 +237,8 @@ export class PensionEstudianteController {
   })
   @ApiQuery({ name: 'anioEscolar', required: false, description: 'Año escolar específico (opcional)' })
   @ApiResponse({ status: 200, description: 'Resumen de configuración obtenido' })
-  obtenerResumenConfiguracion(@Query('anioEscolar') anioEscolar?: number) {
-    return this.pensionEstudianteService.obtenerResumenConfiguracionPensiones(anioEscolar);
+  async obtenerResumenConfiguracion(@Query('anioEscolar') anioEscolar?: number) {
+    return await this.pensionEstudianteService.obtenerResumenConfiguracionPensiones(anioEscolar);
   }
 
   // 12. DESCARGAR VOUCHER

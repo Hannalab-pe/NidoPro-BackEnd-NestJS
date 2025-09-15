@@ -23,7 +23,7 @@ import { UpdateTareaEntregaDto } from './dto/update-tarea-entrega.dto';
 @ApiTags('tarea-entrega')
 @Controller('tarea-entrega')
 export class TareaEntregaController {
-  constructor(private readonly tareaEntregaService: TareaEntregaService) {}
+  constructor(private readonly tareaEntregaService: TareaEntregaService) { }
 
   @Post()
   @ApiOperation({
@@ -52,8 +52,8 @@ export class TareaEntregaController {
     status: 200,
     description: 'Entregas obtenidas correctamente.',
   })
-  findAll() {
-    return this.tareaEntregaService.findAll();
+  async findAll() {
+    return await this.tareaEntregaService.findAll();
   }
 
   @Get('tarea/:idTarea')
@@ -66,8 +66,8 @@ export class TareaEntregaController {
     status: 200,
     description: 'Entregas de la tarea obtenidas correctamente.',
   })
-  findByTarea(@Param('idTarea') idTarea: string) {
-    return this.tareaEntregaService.findByTarea(idTarea);
+  async findByTarea(@Param('idTarea') idTarea: string) {
+    return await this.tareaEntregaService.findByTarea(idTarea);
   }
 
   @Get('estudiante/:idEstudiante')
@@ -79,8 +79,8 @@ export class TareaEntregaController {
     status: 200,
     description: 'Entregas del estudiante obtenidas correctamente.',
   })
-  findByEstudiante(@Param('idEstudiante') idEstudiante: string) {
-    return this.tareaEntregaService.findByEstudiante(idEstudiante);
+  async findByEstudiante(@Param('idEstudiante') idEstudiante: string) {
+    return await this.tareaEntregaService.findByEstudiante(idEstudiante);
   }
 
   @Get('estado/:estado')
@@ -94,8 +94,8 @@ export class TareaEntregaController {
     status: 200,
     description: 'Entregas obtenidas correctamente.',
   })
-  findByEstado(@Param('estado') estado: string) {
-    return this.tareaEntregaService.findByEstado(estado);
+  async findByEstado(@Param('estado') estado: string) {
+    return await this.tareaEntregaService.findByEstado(estado);
   }
 
   @Get('aula/:idAula')
@@ -105,8 +105,8 @@ export class TareaEntregaController {
     status: 200,
     description: 'Entregas del aula obtenidas correctamente.',
   })
-  findByAula(@Param('idAula') idAula: string) {
-    return this.tareaEntregaService.findByAula(idAula);
+  async findByAula(@Param('idAula') idAula: string) {
+    return await this.tareaEntregaService.findByAula(idAula);
   }
 
   @Get('pendientes/por-vencer')
@@ -118,8 +118,8 @@ export class TareaEntregaController {
     status: 200,
     description: 'Entregas pendientes por vencer obtenidas correctamente.',
   })
-  obtenerPendientesPorVencer() {
-    return this.tareaEntregaService.obtenerEntregasPendientesPorVencer();
+  async obtenerPendientesPorVencer() {
+    return await this.tareaEntregaService.obtenerEntregasPendientesPorVencer();
   }
 
   @Get('reporte/tarea/:idTarea')
@@ -127,8 +127,8 @@ export class TareaEntregaController {
   @ApiParam({ name: 'idTarea', description: 'ID de la tarea' })
   @ApiResponse({ status: 200, description: 'Reporte generado correctamente.' })
   @ApiResponse({ status: 404, description: 'Tarea no encontrada.' })
-  generarReporteTarea(@Param('idTarea') idTarea: string) {
-    return this.tareaEntregaService.generarReporteTarea(idTarea);
+  async generarReporteTarea(@Param('idTarea') idTarea: string) {
+    return await this.tareaEntregaService.generarReporteTarea(idTarea);
   }
 
   @Get(':id')
@@ -136,8 +136,8 @@ export class TareaEntregaController {
   @ApiParam({ name: 'id', description: 'ID de la entrega' })
   @ApiResponse({ status: 200, description: 'Entrega obtenida correctamente.' })
   @ApiResponse({ status: 404, description: 'Entrega no encontrada.' })
-  findOne(@Param('id') id: string) {
-    return this.tareaEntregaService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.tareaEntregaService.findOne(id);
   }
 
   @Patch(':id')
@@ -149,11 +149,11 @@ export class TareaEntregaController {
   })
   @ApiResponse({ status: 400, description: 'Datos inválidos o tarea cerrada.' })
   @ApiResponse({ status: 404, description: 'Entrega no encontrada.' })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateTareaEntregaDto: UpdateTareaEntregaDto,
   ) {
-    return this.tareaEntregaService.update(id, updateTareaEntregaDto);
+    return await this.tareaEntregaService.update(id, updateTareaEntregaDto);
   }
 
   @Patch(':id/revisar')
@@ -180,11 +180,11 @@ export class TareaEntregaController {
     description: 'La entrega no está en estado válido para revisar.',
   })
   @ApiResponse({ status: 404, description: 'Entrega no encontrada.' })
-  marcarComoRevisado(
+  async marcarComoRevisado(
     @Param('id') id: string,
     @Body() body: { observacionesDocente: string },
   ) {
-    return this.tareaEntregaService.marcarComoRevisado(
+    return await this.tareaEntregaService.marcarComoRevisado(
       id,
       body.observacionesDocente,
     );
@@ -203,7 +203,7 @@ export class TareaEntregaController {
     status: 409,
     description: 'Conflicto: No se puede eliminar entrega ya realizada.',
   })
-  remove(@Param('id') id: string) {
-    return this.tareaEntregaService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.tareaEntregaService.remove(id);
   }
 }

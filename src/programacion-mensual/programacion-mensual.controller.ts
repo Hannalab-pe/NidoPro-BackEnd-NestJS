@@ -29,7 +29,7 @@ import { EstadoProgramacionMensual } from '../enums/estado-programacion-mensual.
 export class ProgramacionMensualController {
   constructor(
     private readonly programacionMensualService: ProgramacionMensualService,
-  ) {}
+  ) { }
 
   @Post()
   @ApiOperation({ summary: 'Crear nueva programación mensual' })
@@ -41,8 +41,8 @@ export class ProgramacionMensualController {
     status: 400,
     description: 'Error en los datos o programación duplicada',
   })
-  create(@Body() createProgramacionMensualDto: CreateProgramacionMensualDto) {
-    return this.programacionMensualService.create(createProgramacionMensualDto);
+  async create(@Body() createProgramacionMensualDto: CreateProgramacionMensualDto) {
+    return await this.programacionMensualService.create(createProgramacionMensualDto);
   }
 
   @Post('generar-bimestre')
@@ -54,10 +54,10 @@ export class ProgramacionMensualController {
     status: 201,
     description: 'Programaciones del bimestre generadas correctamente',
   })
-  generarProgramacionesBimestre(
+  async generarProgramacionesBimestre(
     @Body() data: { idTrabajador: string; idBimestre: string; idAula: string },
   ) {
-    return this.programacionMensualService.generarProgramacionesBimestre(
+    return await this.programacionMensualService.generarProgramacionesBimestre(
       data.idTrabajador,
       data.idBimestre,
       data.idAula,
@@ -70,11 +70,11 @@ export class ProgramacionMensualController {
     status: 200,
     description: 'Programación presentada correctamente',
   })
-  presentarProgramacion(
+  async presentarProgramacion(
     @Param('id') id: string,
     @Body() data: { archivoUrl: string; observaciones?: string },
   ) {
-    return this.programacionMensualService.presentarProgramacion(
+    return await this.programacionMensualService.presentarProgramacion(
       id,
       data.archivoUrl,
       data.observaciones,
@@ -93,17 +93,17 @@ export class ProgramacionMensualController {
     status: 403,
     description: 'Solo coordinadores pueden evaluar programaciones',
   })
-  evaluarProgramacion(
+  async evaluarProgramacion(
     @Param('id') id: string,
     @Body()
     data: {
       estado:
-        | EstadoProgramacionMensual.APROBADA
-        | EstadoProgramacionMensual.RECHAZADA;
+      | EstadoProgramacionMensual.APROBADA
+      | EstadoProgramacionMensual.RECHAZADA;
       observaciones: string;
     },
   ) {
-    return this.programacionMensualService.evaluarProgramacion(
+    return await this.programacionMensualService.evaluarProgramacion(
       id,
       data.estado,
       data.observaciones,
@@ -122,13 +122,13 @@ export class ProgramacionMensualController {
     status: 403,
     description: 'Solo coordinadores pueden rechazar programaciones',
   })
-  rechazarProgramacion(
+  async rechazarProgramacion(
     @Param('id') id: string,
     @Body() data: { motivoRechazo: string },
     @Request() req: any,
   ) {
     const coordinadorId = req.user?.idTrabajador;
-    return this.programacionMensualService.rechazarProgramacion(
+    return await this.programacionMensualService.rechazarProgramacion(
       id,
       data.motivoRechazo,
       coordinadorId,
@@ -141,8 +141,8 @@ export class ProgramacionMensualController {
     status: 200,
     description: 'Lista de programaciones obtenida correctamente',
   })
-  findAll() {
-    return this.programacionMensualService.findAll();
+  async findAll() {
+    return await this.programacionMensualService.findAll();
   }
 
   @Post('marcar-vencidas')
@@ -153,8 +153,8 @@ export class ProgramacionMensualController {
     status: 200,
     description: 'Programaciones vencidas marcadas correctamente',
   })
-  marcarProgramacionesVencidas() {
-    return this.programacionMensualService.marcarProgramacionesVencidas();
+  async marcarProgramacionesVencidas() {
+    return await this.programacionMensualService.marcarProgramacionesVencidas();
   }
 
   // ==================== ENDPOINTS PARA CARGA MASIVA CON EXCEL ====================
@@ -286,8 +286,8 @@ export class ProgramacionMensualController {
     status: 200,
     description: 'Programaciones del trabajador obtenidas correctamente',
   })
-  findByTrabajador(@Param('idTrabajador') idTrabajador: string) {
-    return this.programacionMensualService.findByTrabajador(idTrabajador);
+  async findByTrabajador(@Param('idTrabajador') idTrabajador: string) {
+    return await this.programacionMensualService.findByTrabajador(idTrabajador);
   }
 
   @Get('bimestre/:idBimestre')
@@ -296,8 +296,8 @@ export class ProgramacionMensualController {
     status: 200,
     description: 'Programaciones del bimestre obtenidas correctamente',
   })
-  findByBimestre(@Param('idBimestre') idBimestre: string) {
-    return this.programacionMensualService.findByBimestre(idBimestre);
+  async findByBimestre(@Param('idBimestre') idBimestre: string) {
+    return await this.programacionMensualService.findByBimestre(idBimestre);
   }
 
   @Get('estado/:estado')
@@ -306,8 +306,8 @@ export class ProgramacionMensualController {
     status: 200,
     description: 'Programaciones por estado obtenidas correctamente',
   })
-  findByEstado(@Param('estado') estado: EstadoProgramacionMensual) {
-    return this.programacionMensualService.findByEstado(estado);
+  async findByEstado(@Param('estado') estado: EstadoProgramacionMensual) {
+    return await this.programacionMensualService.findByEstado(estado);
   }
 
   @Get(':id')
@@ -317,8 +317,8 @@ export class ProgramacionMensualController {
     description: 'Programación obtenida correctamente',
   })
   @ApiResponse({ status: 404, description: 'Programación no encontrada' })
-  findOne(@Param('id') id: string) {
-    return this.programacionMensualService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.programacionMensualService.findOne(id);
   }
 
   @Patch(':id')
@@ -333,11 +333,11 @@ export class ProgramacionMensualController {
     status: 400,
     description: 'Solo se pueden editar programaciones PENDIENTES o RECHAZADAS',
   })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateProgramacionMensualDto: UpdateProgramacionMensualDto,
   ) {
-    return this.programacionMensualService.update(
+    return await this.programacionMensualService.update(
       id,
       updateProgramacionMensualDto,
     );
@@ -353,7 +353,7 @@ export class ProgramacionMensualController {
     status: 400,
     description: 'Solo se pueden eliminar programaciones PENDIENTES',
   })
-  remove(@Param('id') id: string) {
-    return this.programacionMensualService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.programacionMensualService.remove(id);
   }
 }

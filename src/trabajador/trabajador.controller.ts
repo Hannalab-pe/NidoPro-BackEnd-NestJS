@@ -22,8 +22,8 @@ export class TrabajadorController {
   @ApiOperation({
     summary: 'Registrar un nuevo trabajador (docente/administrativo)',
   })
-  create(@Body() createTrabajadorDto: CreateTrabajadorDto) {
-    return this.trabajadorService.create(createTrabajadorDto);
+  async create(@Body() createTrabajadorDto: CreateTrabajadorDto) {
+    return await this.trabajadorService.create(createTrabajadorDto);
   }
 
   @Post('transactional')
@@ -31,18 +31,18 @@ export class TrabajadorController {
     summary: 'Registrar trabajador completo (trabajador + sueldo + contrato) en una transacción',
     description: 'Crea un trabajador, su usuario, sueldo base y contrato inicial de forma transaccional'
   })
-  createTransactional(@Body() createTrabajadorTransactionalDto: CreateTrabajadorTransactionalDto) {
-    return this.trabajadorService.createTrabajadorTransactional(createTrabajadorTransactionalDto);
+  async createTransactional(@Body() createTrabajadorTransactionalDto: CreateTrabajadorTransactionalDto) {
+    return await this.trabajadorService.createTrabajadorTransactional(createTrabajadorTransactionalDto);
   }
 
 
-  
+
   @Get()
   @ApiOperation({ summary: 'Obtener todos los trabajadores' })
-  findAll() {
-    return this.trabajadorService.findAll();
+  async findAll() {
+    return await this.trabajadorService.findAll();
   }
-  
+
   @Get('sin-planilla')
   @ApiOperation({ summary: 'Obtener trabajadores sin detalle de planilla asociado' })
   async findTrabajadorSinDetallePlanilla() {
@@ -60,28 +60,28 @@ export class TrabajadorController {
     summary:
       'Aulas por Trabajador - Obtener todas las aulas asignadas a un trabajador específico',
   })
-  findAulasPorTrabajador(@Param('idTrabajador') idTrabajador: string) {
-    return this.trabajadorService.findAulasPorTrabajador(idTrabajador);
+  async findAulasPorTrabajador(@Param('idTrabajador') idTrabajador: string) {
+    return await this.trabajadorService.findAulasPorTrabajador(idTrabajador);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un trabajador específico por ID' })
-  findOne(@Param('id') id: string) {
-    return this.trabajadorService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.trabajadorService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar información de un trabajador' })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateTrabajadorDto: UpdateTrabajadorDto,
   ) {
-    return this.trabajadorService.update(id, updateTrabajadorDto);
+    return await this.trabajadorService.update(id, updateTrabajadorDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar un trabajador (desactivar)' })
-  remove(@Param('id') id: string) {
-    return this.trabajadorService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.trabajadorService.remove(id);
   }
 }

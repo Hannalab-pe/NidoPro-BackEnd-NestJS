@@ -50,8 +50,8 @@ export class EvaluacionController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar una evaluación existente' })
-  update(@Param('id') id: string, @Body() updateEvaluacionDto: UpdateEvaluacionDto) {
-    const data = this.evaluacionService.update(id, updateEvaluacionDto);
+  async update(@Param('id') id: string, @Body() updateEvaluacionDto: UpdateEvaluacionDto) {
+    const data = await this.evaluacionService.update(id, updateEvaluacionDto);
     return {
       success: true,
       message: `Evaluación Actualizada Correctamente con el ID ${id}`,

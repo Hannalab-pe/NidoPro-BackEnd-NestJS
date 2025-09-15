@@ -23,8 +23,8 @@ export class ComentarioDocenteController {
     status: 404,
     description: 'Trabajador o coordinador no encontrado',
   })
-  create(@Body() createComentarioDocenteDto: CreateComentarioDocenteDto) {
-    return this.comentarioDocenteService.create(createComentarioDocenteDto);
+  async create(@Body() createComentarioDocenteDto: CreateComentarioDocenteDto) {
+    return await this.comentarioDocenteService.create(createComentarioDocenteDto);
   }
 
   @Get()
@@ -33,10 +33,10 @@ export class ComentarioDocenteController {
     status: 200,
     description: 'Lista de comentarios docentes obtenida correctamente',
   })
-  findAll() {
-    return this.comentarioDocenteService.findAll();
+  async findAll() {
+    return await this.comentarioDocenteService.findAll();
   }
-
+   
   @Get('trabajador/:idTrabajador')
   @ApiOperation({ summary: 'Obtener comentarios docentes por trabajador' })
   @ApiParam({
@@ -52,8 +52,8 @@ export class ComentarioDocenteController {
     status: 404,
     description: 'Trabajador no encontrado',
   })
-  findByTrabajador(@Param('idTrabajador', ParseUUIDPipe) idTrabajador: string) {
-    return this.comentarioDocenteService.findByTrabajador(idTrabajador);
+  async findByTrabajador(@Param('idTrabajador', ParseUUIDPipe) idTrabajador: string) {
+    return await this.comentarioDocenteService.findByTrabajador(idTrabajador);
   }
 
   @Get(':id')
@@ -71,8 +71,8 @@ export class ComentarioDocenteController {
     status: 404,
     description: 'Comentario docente no encontrado',
   })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.comentarioDocenteService.findOne(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.comentarioDocenteService.findOne(id);
   }
 
   @Patch(':id')
@@ -94,8 +94,8 @@ export class ComentarioDocenteController {
     status: 404,
     description: 'Comentario docente no encontrado',
   })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateComentarioDocenteDto: UpdateComentarioDocenteDto) {
-    return this.comentarioDocenteService.update(id, updateComentarioDocenteDto);
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() updateComentarioDocenteDto: UpdateComentarioDocenteDto) {
+    return await this.comentarioDocenteService.update(id, updateComentarioDocenteDto);
   }
 
   @Delete(':id')
@@ -113,7 +113,7 @@ export class ComentarioDocenteController {
     status: 404,
     description: 'Comentario docente no encontrado',
   })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.comentarioDocenteService.remove(id);
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.comentarioDocenteService.remove(id);
   }
 }

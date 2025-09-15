@@ -18,22 +18,22 @@ export class CursoGradoController {
   }
 
   @Get()
-  findAll() {
-    return this.cursoGradoService.findAll();
+  async findAll() {
+    return await this.cursoGradoService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.cursoGradoService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    return await this.cursoGradoService.findOne(+id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCursoGradoDto: UpdateCursoGradoDto) {
-    return this.cursoGradoService.update(+id, updateCursoGradoDto);
+  async update(@Param('id') id: string, @Body() updateCursoGradoDto: UpdateCursoGradoDto) {
+    return await this.cursoGradoService.update(+id, updateCursoGradoDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.cursoGradoService.remove(+id);
+  async remove(@Param('id') id: string) {
+    return await this.cursoGradoService.remove(+id);
   }
 }

@@ -33,8 +33,8 @@ export class SeguroTrabajadorController {
     description: 'Trabajador o tipo de seguro no encontrado',
   })
   @ApiResponse({ status: 400, description: 'Fechas inválidas' })
-  create(@Body() createSeguroTrabajadorDto: CreateSeguroTrabajadorDto) {
-    return this.seguroTrabajadorService.create(createSeguroTrabajadorDto);
+  async create(@Body() createSeguroTrabajadorDto: CreateSeguroTrabajadorDto) {
+    return await this.seguroTrabajadorService.create(createSeguroTrabajadorDto);
   }
 
   @Get()
@@ -43,8 +43,8 @@ export class SeguroTrabajadorController {
     status: 200,
     description: 'Lista de seguros obtenida correctamente',
   })
-  findAll() {
-    return this.seguroTrabajadorService.findAll();
+  async findAll() {
+    return await this.seguroTrabajadorService.findAll();
   }
 
   @Get(':id')
@@ -59,8 +59,8 @@ export class SeguroTrabajadorController {
     status: 404,
     description: 'Seguro de trabajador no encontrado',
   })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.seguroTrabajadorService.findOne(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.seguroTrabajadorService.findOne(id);
   }
 
   @Patch(':id')
@@ -79,11 +79,11 @@ export class SeguroTrabajadorController {
     description: 'Seguro de trabajador no encontrado',
   })
   @ApiResponse({ status: 400, description: 'Datos de actualización inválidos' })
-  update(
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateSeguroTrabajadorDto: UpdateSeguroTrabajadorDto,
   ) {
-    return this.seguroTrabajadorService.update(id, updateSeguroTrabajadorDto);
+    return await this.seguroTrabajadorService.update(id, updateSeguroTrabajadorDto);
   }
 
   @Delete(':id')
@@ -102,7 +102,7 @@ export class SeguroTrabajadorController {
     status: 404,
     description: 'Seguro de trabajador no encontrado',
   })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.seguroTrabajadorService.remove(id);
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.seguroTrabajadorService.remove(id);
   }
 }

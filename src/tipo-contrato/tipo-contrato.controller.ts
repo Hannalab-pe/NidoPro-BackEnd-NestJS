@@ -23,31 +23,31 @@ export class TipoContratoController {
   @ApiOperation({ summary: 'Crear un nuevo tipo de contrato' })
   @ApiResponse({ status: 201, description: 'Tipo de contrato creado exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
-  create(@Body() createTipoContratoDto: CreateTipoContratoDto) {
-    return this.tipoContratoService.create(createTipoContratoDto);
+  async create(@Body() createTipoContratoDto: CreateTipoContratoDto) {
+    return await this.tipoContratoService.create(createTipoContratoDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los tipos de contrato' })
   @ApiResponse({ status: 200, description: 'Lista de tipos de contrato' })
-  findAll() {
-    return this.tipoContratoService.findAll();
+  async findAll() {
+    return await this.tipoContratoService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un tipo de contrato específico por ID' })
   @ApiResponse({ status: 200, description: 'Tipo de contrato encontrado' })
   @ApiResponse({ status: 404, description: 'Tipo de contrato no encontrado' })
-  findOne(@Param('id') id: string) {
-    return this.tipoContratoService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.tipoContratoService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar un tipo de contrato' })
   @ApiResponse({ status: 200, description: 'Tipo de contrato actualizado exitosamente' })
   @ApiResponse({ status: 404, description: 'Tipo de contrato no encontrado' })
-  update(@Param('id') id: string, @Body() updateTipoContratoDto: UpdateTipoContratoDto) {
-    return this.tipoContratoService.update(id, updateTipoContratoDto);
+  async update(@Param('id') id: string, @Body() updateTipoContratoDto: UpdateTipoContratoDto) {
+    return await this.tipoContratoService.update(id, updateTipoContratoDto);
   }
 
   @Delete(':id')
@@ -55,7 +55,7 @@ export class TipoContratoController {
   @ApiResponse({ status: 200, description: 'Tipo de contrato eliminado exitosamente' })
   @ApiResponse({ status: 404, description: 'Tipo de contrato no encontrado' })
   @HttpCode(HttpStatus.OK)
-  remove(@Param('id') id: string) {
-    return this.tipoContratoService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.tipoContratoService.remove(id);
   }
 }

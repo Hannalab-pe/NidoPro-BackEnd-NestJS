@@ -7,7 +7,7 @@ import { UpdatePlanificacionDto } from './dto/update-planificacion.dto';
 @ApiTags('Planificación')
 @Controller('planificacion')
 export class PlanificacionController {
-  constructor(private readonly planificacionService: PlanificacionService) {}
+  constructor(private readonly planificacionService: PlanificacionService) { }
 
   @Post()
   @ApiOperation({ summary: 'Crear nueva planificación' })
@@ -23,8 +23,8 @@ export class PlanificacionController {
     status: 404,
     description: 'Trabajador o aula no encontrado',
   })
-  create(@Body() createPlanificacionDto: CreatePlanificacionDto) {
-    return this.planificacionService.create(createPlanificacionDto);
+  async create(@Body() createPlanificacionDto: CreatePlanificacionDto) {
+    return await this.planificacionService.create(createPlanificacionDto);
   }
 
   @Get()
@@ -33,8 +33,8 @@ export class PlanificacionController {
     status: 200,
     description: 'Lista de planificaciones obtenida correctamente',
   })
-  findAll() {
-    return this.planificacionService.findAll();
+  async findAll() {
+    return await this.planificacionService.findAll();
   }
 
   @Get('trabajador/:idTrabajador')
@@ -52,8 +52,8 @@ export class PlanificacionController {
     status: 404,
     description: 'Trabajador no encontrado',
   })
-  findByTrabajador(@Param('idTrabajador', ParseUUIDPipe) idTrabajador: string) {
-    return this.planificacionService.findByTrabajador(idTrabajador);
+  async findByTrabajador(@Param('idTrabajador', ParseUUIDPipe) idTrabajador: string) {
+    return await this.planificacionService.findByTrabajador(idTrabajador);
   }
 
   @Get(':id')
@@ -71,8 +71,8 @@ export class PlanificacionController {
     status: 404,
     description: 'Planificación no encontrada',
   })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.planificacionService.findOne(id);
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.planificacionService.findOne(id);
   }
 
   @Patch(':id')
@@ -94,8 +94,8 @@ export class PlanificacionController {
     status: 404,
     description: 'Planificación no encontrada',
   })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updatePlanificacionDto: UpdatePlanificacionDto) {
-    return this.planificacionService.update(id, updatePlanificacionDto);
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() updatePlanificacionDto: UpdatePlanificacionDto) {
+    return await this.planificacionService.update(id, updatePlanificacionDto);
   }
 
   @Delete(':id')
@@ -113,7 +113,7 @@ export class PlanificacionController {
     status: 404,
     description: 'Planificación no encontrada',
   })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.planificacionService.remove(id);
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    return await this.planificacionService.remove(id);
   }
 }

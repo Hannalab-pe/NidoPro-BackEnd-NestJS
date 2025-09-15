@@ -101,8 +101,8 @@ export class AulaController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar un aula específica' })
-  update(@Param('id') id: string, @Body() updateAulaDto: UpdateAulaDto) {
-    const data = this.aulaService.update(id, updateAulaDto);
+  async update(@Param('id') id: string, @Body() updateAulaDto: UpdateAulaDto) {
+    const data = await this.aulaService.update(id, updateAulaDto);
     return {
       success: true,
       message: `Aula Actualizada Correctamente con el ID ${id}`,

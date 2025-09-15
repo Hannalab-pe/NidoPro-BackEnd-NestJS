@@ -31,8 +31,8 @@ export class DetallePlanillaController {
     status: 409,
     description: 'Ya existe un detalle para este trabajador en esta planilla',
   })
-  create(@Body() createDetallePlanillaDto: CreateDetallePlanillaDto) {
-    return this.detallePlanillaService.create(createDetallePlanillaDto);
+  async create(@Body() createDetallePlanillaDto: CreateDetallePlanillaDto) {
+    return await this.detallePlanillaService.create(createDetallePlanillaDto);
   }
 
   @Get('planilla/:idPlanilla')
@@ -42,8 +42,8 @@ export class DetallePlanillaController {
     description: 'Detalles de la planilla obtenidos correctamente',
   })
   @ApiParam({ name: 'idPlanilla', description: 'ID de la planilla mensual' })
-  findByPlanilla(@Param('idPlanilla') idPlanilla: string) {
-    return this.detallePlanillaService.findByPlanilla(idPlanilla);
+  async findByPlanilla(@Param('idPlanilla') idPlanilla: string) {
+    return await this.detallePlanillaService.findByPlanilla(idPlanilla);
   }
 
   @Get('trabajador/:idTrabajador')
@@ -53,8 +53,8 @@ export class DetallePlanillaController {
     description: 'Detalles del trabajador obtenidos correctamente',
   })
   @ApiParam({ name: 'idTrabajador', description: 'ID del trabajador' })
-  findByTrabajador(@Param('idTrabajador') idTrabajador: string) {
-    return this.detallePlanillaService.findByTrabajador(idTrabajador);
+  async findByTrabajador(@Param('idTrabajador') idTrabajador: string) {
+    return await this.detallePlanillaService.findByTrabajador(idTrabajador);
   }
 
   @Get('estado-pago/:estado')
@@ -68,8 +68,8 @@ export class DetallePlanillaController {
     description: 'Estado de pago',
     enum: EstadoPago,
   })
-  findByEstadoPago(@Param('estado') estado: EstadoPago) {
-    return this.detallePlanillaService.findByEstadoPago(estado);
+  async findByEstadoPago(@Param('estado') estado: EstadoPago) {
+    return await this.detallePlanillaService.findByEstadoPago(estado);
   }
 
   @Post(':id/recalcular-totales')
@@ -79,8 +79,8 @@ export class DetallePlanillaController {
     description: 'Totales recalculados correctamente',
   })
   @ApiResponse({ status: 404, description: 'Detalle no encontrado' })
-  recalcularTotales(@Param('id') id: string) {
-    return this.detallePlanillaService.recalcularTotales(id);
+  async recalcularTotales(@Param('id') id: string) {
+    return await this.detallePlanillaService.recalcularTotales(id);
   }
 
   @Get()
@@ -89,16 +89,16 @@ export class DetallePlanillaController {
     status: 200,
     description: 'Lista de detalles obtenida correctamente',
   })
-  findAll() {
-    return this.detallePlanillaService.findAll();
+  async findAll() {
+    return await this.detallePlanillaService.findAll();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener detalle por ID' })
   @ApiResponse({ status: 200, description: 'Detalle obtenido correctamente' })
   @ApiResponse({ status: 404, description: 'Detalle no encontrado' })
-  findOne(@Param('id') id: string) {
-    return this.detallePlanillaService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    return await this.detallePlanillaService.findOne(id);
   }
 
   @Patch(':id')
@@ -109,18 +109,18 @@ export class DetallePlanillaController {
   })
   @ApiResponse({ status: 404, description: 'Detalle no encontrado' })
   @ApiResponse({ status: 409, description: 'Conflicto con datos existentes' })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateDetallePlanillaDto: UpdateDetallePlanillaDto,
   ) {
-    return this.detallePlanillaService.update(id, updateDetallePlanillaDto);
+    return await this.detallePlanillaService.update(id, updateDetallePlanillaDto);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar detalle de planilla' })
   @ApiResponse({ status: 200, description: 'Detalle eliminado correctamente' })
   @ApiResponse({ status: 404, description: 'Detalle no encontrado' })
-  remove(@Param('id') id: string) {
-    return this.detallePlanillaService.remove(id);
+  async remove(@Param('id') id: string) {
+    return await this.detallePlanillaService.remove(id);
   }
 }
