@@ -11,13 +11,13 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { PlanillaMensualService } from './planilla-mensual.service';
 import { CreatePlanillaMensualDto } from './dto/create-planilla-mensual.dto';
-import { UpdatePlanillaMensualDto } from './dto/update-planilla-mensual.dto';
 import {
   AprobarPlanillaMensualDto,
   AprobarPlanillasMasivasDto,
   GenerarPlanillaConTrabajadoresDto,
 } from './dto/operaciones-planilla.dto';
 import { EstadoPlanilla } from 'src/enums/estado-planilla.enum';
+import { UpdatePlanillaMensualTrabajadorDto } from './dto/update-planilla-trabajadores-mensual.dto';
 
 @ApiTags('Planilla Mensual')
 @Controller('planilla-mensual')
@@ -136,21 +136,28 @@ export class PlanillaMensualController {
     return await this.planillaMensualService.findOne(id);
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar planilla mensual' })
+  @Patch(':id/agregar-trabajadores')
+  @ApiOperation({
+    summary: 'Agregar trabajadores a una planilla existente',
+    description: 'Agrega trabajadores que no estén ya en la planilla. Filtra automáticamente los duplicados.'
+  })
   @ApiResponse({
     status: 200,
-    description: 'Planilla actualizada correctamente',
+    description: 'Trabajadores agregados correctamente a la planilla',
   })
   @ApiResponse({
     status: 400,
-    description: 'Solo se pueden editar planillas GENERADAS o EN_REVISION',
+    description: 'Error en validación o todos los trabajadores ya están en la planilla',
   })
-  async update(
-    @Param('id') id: string,
-    @Body() updatePlanillaMensualDto: UpdatePlanillaMensualDto,
+  @ApiResponse({
+    status: 404,
+    description: 'Planilla no encontrada',
+  })
+  async agregarTrabajadores(
+    @Param('idPlanilla') idPlanilla: string,
+    @Body() body: UpdatePlanillaMensualTrabajadorDto,
   ) {
-    return await this.planillaMensualService.update(id, updatePlanillaMensualDto);
+    return await this.planillaMensualService.updatePlanillaConTrabajadores(idPlanilla, body);
   }
 
   @Delete(':id')

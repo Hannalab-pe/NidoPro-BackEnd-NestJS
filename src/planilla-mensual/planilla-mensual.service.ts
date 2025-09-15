@@ -23,6 +23,7 @@ import { SueldoTrabajadorService } from 'src/sueldo-trabajador/sueldo-trabajador
 import { TrabajadorService } from 'src/trabajador/trabajador.service';
 import { CajaSimpleService } from 'src/caja-simple/caja-simple.service';
 import { CajaSimple } from 'src/caja-simple/entities/caja-simple.entity';
+import { UpdatePlanillaMensualTrabajadorDto } from './dto/update-planilla-trabajadores-mensual.dto';
 
 @Injectable()
 export class PlanillaMensualService {
@@ -756,100 +757,128 @@ export class PlanillaMensualService {
     return planilla;
   }
 
-  async update(
+  async updatePlanillaConTrabajadores(
     id: string,
-    updatePlanillaMensualDto: UpdatePlanillaMensualDto,
+    updateDto: UpdatePlanillaMensualTrabajadorDto,
   ): Promise<{
     success: boolean;
     message: string;
     planilla: PlanillaMensual;
+    detallesCreados: DetallePlanilla[];
   }> {
-    const planilla = await this.findOne(id);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    // Solo permitir edición si está en estado GENERADA o EN_REVISION
-    if (
-      ![EstadoPlanilla.GENERADA, EstadoPlanilla.EN_REVISION].includes(
-        planilla.estadoPlanilla as EstadoPlanilla,
-      )
-    ) {
-      throw new BadRequestException(
-        'Solo se pueden editar planillas en estado GENERADA o EN_REVISION',
-      );
-    }
+    try {
+      // 1. Buscar la planilla existente
+      const planilla = await this.findOne(id);
 
-    // Verificar trabajadores si se actualizan
-    if (updatePlanillaMensualDto.generadoPor) {
-      const trabajadorGenerador = await this.trabajadorService.findOne(
-        updatePlanillaMensualDto.generadoPor,
-      );
-      if (!trabajadorGenerador) {
-        throw new NotFoundException('El trabajador generador no existe');
+      // Solo permitir edición si está en estado GENERADA o EN_REVISION
+      if (
+        ![EstadoPlanilla.GENERADA, EstadoPlanilla.EN_REVISION].includes(
+          planilla.estadoPlanilla as EstadoPlanilla,
+        )
+      ) {
+        throw new BadRequestException(
+          'Solo se pueden agregar trabajadores a planillas en estado GENERADA o EN_REVISION',
+        );
       }
-    }
 
-    if (updatePlanillaMensualDto.aprobadoPor) {
-      const trabajadorAprobador = await this.trabajadorService.findOne(
-        updatePlanillaMensualDto.aprobadoPor,
-      );
-      if (!trabajadorAprobador) {
-        throw new NotFoundException('El trabajador aprobador no existe');
+      // 2. Validar que los trabajadores existen
+      console.log('🔍 Validando trabajadores:', updateDto.trabajadores);
+      const trabajadores = await this.trabajadorService.findByIds(updateDto.trabajadores ?? []);
+
+      if (trabajadores.length !== updateDto.trabajadores?.length) {
+        const trabajadoresEncontrados = trabajadores.map(t => t.idTrabajador);
+        const trabajadoresNoEncontrados = updateDto.trabajadores?.filter(id => !trabajadoresEncontrados.includes(id));
+        throw new BadRequestException(`Los siguientes trabajadores no existen: ${trabajadoresNoEncontrados?.join(', ')}`);
       }
+
+      // 3. Obtener trabajadores que ya están en la planilla para filtrarlos
+      const trabajadoresExistentes = await this.detallePlanillaRepository.find({
+        where: { idPlanillaMensual: id },
+        select: ['idTrabajador'],
+      });
+
+      const idsExistentes = trabajadoresExistentes.map(d => d.idTrabajador);
+      const trabajadoresNuevos = trabajadores.filter(t => !idsExistentes.includes(t.idTrabajador));
+
+      if (trabajadoresNuevos.length === 0) {
+        throw new BadRequestException('Todos los trabajadores proporcionados ya están en la planilla');
+      }
+
+      console.log(`📝 Agregando ${trabajadoresNuevos.length} trabajadores nuevos a la planilla`);
+
+      // 4. Crear detalles para trabajadores nuevos
+      const detallesCreados: DetallePlanilla[] = [];
+
+      for (const trabajador of trabajadoresNuevos) {
+        try {
+          console.log(`🔄 Procesando trabajador nuevo: ${trabajador.nombre} ${trabajador.apellido}`);
+
+          // Obtener el sueldo vigente del trabajador
+          const sueldoData = await this.sueldoTrabajadorService.obtenerSueldoVigenteTrabajador(
+            trabajador.idTrabajador,
+          );
+
+          if (!sueldoData) {
+            throw new BadRequestException(
+              `No se encontró sueldo vigente para el trabajador ${trabajador.nombre} ${trabajador.apellido}`,
+            );
+          }
+
+          console.log(`💰 Sueldo encontrado para ${trabajador.nombre}: ${sueldoData.sueldoBase}`);
+
+          // Crear detalle usando el servicio correspondiente (sin guardarlo aún)
+          const detalleNuevo = this.detallePlanillaService.crearDetalleTrabajadorSinGuardar(
+            planilla.idPlanillaMensual,
+            trabajador.idTrabajador,
+            sueldoData,
+          );
+
+          const detalleGuardado = await queryRunner.manager.save(DetallePlanilla, detalleNuevo);
+          detallesCreados.push(detalleGuardado);
+
+          console.log(`✅ Detalle creado para ${trabajador.nombre}: ID ${detalleGuardado.idDetallePlanilla}`);
+        } catch (error) {
+          console.error(`❌ Error procesando trabajador ${trabajador.nombre}:`, error.message);
+          throw new BadRequestException(
+            `Error procesando trabajador ${trabajador.nombre} ${trabajador.apellido}: ${error.message}`
+          );
+        }
+      }
+
+      // 5. Recalcular totales de la planilla
+      console.log('🔢 Recalculando totales...');
+      await this.recalcularTotalesPlanilla(planilla.idPlanillaMensual, queryRunner);
+
+      await queryRunner.commitTransaction();
+      console.log('✅ Transacción completada exitosamente');
+
+      // 6. Obtener la planilla completa actualizada
+      const planillaActualizada = await this.findOne(id);
+
+      return {
+        success: true,
+        message: `Se agregaron ${detallesCreados.length} trabajadores nuevos a la planilla. Trabajadores que ya estaban: ${idsExistentes.length}`,
+        planilla: planillaActualizada,
+        detallesCreados,
+      };
+
+    } catch (error) {
+      console.error('❌ Error en updatePlanillaConTrabajadores:', error);
+      await queryRunner.rollbackTransaction();
+
+      // Re-lanzar con más información
+      if (error instanceof BadRequestException || error instanceof ConflictException || error instanceof NotFoundException) {
+        throw error;
+      } else {
+        throw new BadRequestException(`Error interno al actualizar planilla: ${error.message}`);
+      }
+    } finally {
+      await queryRunner.release();
     }
-
-    // Preparar datos de actualización sin las propiedades problemáticas
-    const updateData: any = {
-      actualizadoEn: new Date(),
-    };
-
-    // Agregar campos básicos
-    if (updatePlanillaMensualDto.mes !== undefined)
-      updateData.mes = updatePlanillaMensualDto.mes;
-    if (updatePlanillaMensualDto.anio !== undefined)
-      updateData.anio = updatePlanillaMensualDto.anio;
-    if (updatePlanillaMensualDto.fechaPagoProgramada !== undefined)
-      updateData.fechaPagoProgramada =
-        updatePlanillaMensualDto.fechaPagoProgramada;
-    if (updatePlanillaMensualDto.estadoPlanilla !== undefined)
-      updateData.estadoPlanilla = updatePlanillaMensualDto.estadoPlanilla;
-    if (updatePlanillaMensualDto.observaciones !== undefined)
-      updateData.observaciones = updatePlanillaMensualDto.observaciones;
-
-    await this.planillaMensualRepository.update(id, updateData);
-
-    // Actualizar relaciones por separado si es necesario
-    if (updatePlanillaMensualDto.generadoPor) {
-      await this.planillaMensualRepository
-        .createQueryBuilder()
-        .update(PlanillaMensual)
-        .set({
-          generadoPor: {
-            idTrabajador: updatePlanillaMensualDto.generadoPor,
-          } as any,
-        })
-        .where('idPlanillaMensual = :id', { id })
-        .execute();
-    }
-
-    if (updatePlanillaMensualDto.aprobadoPor) {
-      await this.planillaMensualRepository
-        .createQueryBuilder()
-        .update(PlanillaMensual)
-        .set({
-          aprobadoPor: {
-            idTrabajador: updatePlanillaMensualDto.aprobadoPor,
-          } as any,
-        })
-        .where('idPlanillaMensual = :id', { id })
-        .execute();
-    }
-
-    const planillaActualizada = await this.findOne(id);
-
-    return {
-      success: true,
-      message: 'Planilla actualizada correctamente',
-      planilla: planillaActualizada,
-    };
   }
 
   async remove(id: string): Promise<{
