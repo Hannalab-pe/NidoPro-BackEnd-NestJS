@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateAsistenciaDto, CreateAsistenciaMasivaDto } from './dto/create-asistencia.dto';
 import { UpdateAsistenciaDto } from './dto/update-asistencia.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -73,7 +73,7 @@ export class AsistenciaService {
   async update(id: string, updateAsistenciaDto: UpdateAsistenciaDto): Promise<Asistencia | null> {
     const asistenciaFound = await this.asistenciaRepository.findOne({ where: { idAsistencia: id } });
     if (!asistenciaFound) {
-      throw new Error(`Asistencia with id ${id} not found`);
+      throw new NotFoundException(`Asistencia with id ${id} not found`);
     }
 
     const updateData: any = {

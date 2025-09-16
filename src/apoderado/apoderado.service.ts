@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateApoderadoDto } from './dto/create-apoderado.dto';
 import { UpdateApoderadoDto } from './dto/update-apoderado.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -31,7 +31,7 @@ export class ApoderadoService {
   async update(id: string, updateApoderadoDto: UpdateApoderadoDto): Promise<Apoderado | null> {
     const apoderadorFound = await this.apoderadoRepository.findOne({ where: { idApoderado: id } });
     if (!apoderadorFound) {
-      throw new Error(`Apoderado with id ${id} not found`);
+      throw new NotFoundException(`Apoderado with id ${id} not found`);
     }
     await this.apoderadoRepository.update({ idApoderado: id }, updateApoderadoDto);
     return this.findOne(id);

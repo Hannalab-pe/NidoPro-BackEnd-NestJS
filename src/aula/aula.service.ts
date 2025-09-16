@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateAulaDto } from './dto/create-aula.dto';
 import { UpdateAulaDto } from './dto/update-aula.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -69,7 +69,7 @@ export class AulaService {
   async update(id: string, updateAulaDto: UpdateAulaDto): Promise<Aula | null> {
     const aulaFound = await this.aulaRepository.findOne({ where: { idAula: id } });
     if (!aulaFound) {
-      throw new Error(`Aula with id ${id} not found`);
+      throw new NotFoundException(`Aula with id ${id} not found`);
     }
 
     const updateData: any = {
@@ -91,36 +91,39 @@ export class AulaService {
       relations: ['asignacionAulas', 'asignacionAulas.idTrabajador'],
     });
     if (!aula) {
-      throw new Error(`Aula with id ${idAula} not found`);
+      throw new NotFoundException(`Aula with id ${idAula} not found`);
     }
     return aula.asignacionAulas;
   }
 
   async getAulasDisponiblesConDetalles(idGrado: string): Promise<any[]> {
-    const aulasConDetalles = await this.aulaRepository
+    const aulasConDetalles = this.aulaRepository
       .createQueryBuilder('aula')
+      .innerJoin('aula.idGrado', 'grado')
       .leftJoin('aula.matriculaAula', 'ma', 'ma.estado = :estado', { estado: 'activo' })
-      .leftJoin('aula.idGrado', 'grado')
-      .where('aula.idGrado = :idGrado', { idGrado: idGrado })
+      .where('grado.idGrado = :idGrado', { idGrado: idGrado })
       .select([
-        'aula.idAula',
-        'aula.seccion',
-        'aula.cantidadEstudiantes',
-        'COUNT(ma.idMatriculaAula) as estudiantesAsignados'
+        'aula.idAula as id_aula',
+        'aula.seccion as seccion',
+        'grado.grado as grado',
+        'aula.cantidadEstudiantes as cantidad_estudiantes',
+        'COUNT(ma.idMatricula) as estudiantes_asignados'
       ])
-      .groupBy('aula.idAula, aula.seccion, aula.cantidadEstudiantes')
-      .having('COUNT(ma.idMatriculaAula) < aula.cantidadEstudiantes OR aula.cantidadEstudiantes IS NULL')
-      .orderBy('COUNT(ma.idMatriculaAula)', 'ASC')
+      .groupBy('aula.idAula, aula.seccion, grado.grado, aula.cantidadEstudiantes')
+      .orderBy('grado.grado', 'ASC')
       .addOrderBy('aula.seccion', 'ASC')
       .getRawMany();
 
+    const resultado = await aulasConDetalles;
+
     // Transformar los datos para agregar cupos disponibles
-    return aulasConDetalles.map(aula => ({
-      idAula: aula.aula_idAula,
-      seccion: aula.aula_seccion,
-      cantidadEstudiantes: parseInt(aula.aula_cantidadEstudiantes) || 0,
-      estudiantesAsignados: parseInt(aula.estudiantesAsignados) || 0,
-      cuposDisponibles: (parseInt(aula.aula_cantidadEstudiantes) || 0) - (parseInt(aula.estudiantesAsignados) || 0)
+    return resultado.map(aula => ({
+      idAula: aula.id_aula,
+      seccion: aula.seccion,
+      grado: aula.grado,
+      cantidadEstudiantes: parseInt(aula.cantidad_estudiantes) || 0,
+      estudiantesAsignados: parseInt(aula.estudiantes_asignados) || 0,
+      cuposDisponibles: (parseInt(aula.cantidad_estudiantes) || 0) - (parseInt(aula.estudiantes_asignados) || 0)
     }));
   }
 

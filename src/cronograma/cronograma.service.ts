@@ -48,7 +48,7 @@ export class CronogramaService {
       where: { idCronograma: id },
     });
     if (!cronogramaFound) {
-      throw new Error(`Cronograma with id ${id} not found`);
+      throw new NotFoundException(`Cronograma with id ${id} not found`);
     }
 
     const updateData: any = {

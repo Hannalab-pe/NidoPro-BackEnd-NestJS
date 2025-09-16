@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateGradoDto } from './dto/create-grado.dto';
 import { UpdateGradoDto } from './dto/update-grado.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -79,7 +79,7 @@ export class GradoService {
   async update(id: string, updateGradoDto: UpdateGradoDto): Promise<Grado | null> {
     const gradoFound = await this.gradoRepository.findOne({ where: { idGrado: id } });
     if (!gradoFound) {
-      throw new Error(`Grado with id ${id} not found`);
+      throw new NotFoundException(`Grado with id ${id} not found`);
     }
 
     const updateData: any = {

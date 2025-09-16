@@ -82,20 +82,4 @@ export class CursoGradoService {
       return cursoGradoGuardado;
     });
   }
-
-  findAll() {
-    return `This action returns all cursoGrado`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} cursoGrado`;
-  }
-
-  update(id: number, updateCursoGradoDto: UpdateCursoGradoDto) {
-    return `This action updates a #${id} cursoGrado`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} cursoGrado`;
-  }
 }

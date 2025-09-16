@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateInformeDto } from './dto/create-informe.dto';
 import { UpdateInformeDto } from './dto/update-informe.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -60,7 +60,7 @@ export class InformeService {
   async update(id: string, updateInformeDto: UpdateInformeDto): Promise<Informe | null> {
     const informeFound = await this.informeRepository.findOne({ where: { idInforme: id } });
     if (!informeFound) {
-      throw new Error(`Informe with id ${id} not found`);
+      throw new NotFoundException(`Informe with id ${id} not found`);
     }
 
     const updateData: any = {

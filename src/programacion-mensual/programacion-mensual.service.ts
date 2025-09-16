@@ -204,7 +204,7 @@ export class ProgramacionMensualService {
         if (error.message.includes('Ya existe una programación')) {
           continue;
         }
-        throw error;
+        throw new BadRequestException(`Error al crear programación para el mes ${mes}: ${error.message}`);
       }
     }
 
@@ -968,7 +968,7 @@ export class ProgramacionMensualService {
 
     // Si hay errores, lanzar excepción
     if (errores.length > 0) {
-      throw new Error(`Fila ${numeroFila}: ${errores.join(', ')}`);
+      throw new BadRequestException(`Fila ${numeroFila}: ${errores.join(', ')}`);
     }
   }
 

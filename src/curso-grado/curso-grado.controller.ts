@@ -17,23 +17,4 @@ export class CursoGradoController {
     }
   }
 
-  @Get()
-  async findAll() {
-    return await this.cursoGradoService.findAll();
-  }
-
-  @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return await this.cursoGradoService.findOne(+id);
-  }
-
-  @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateCursoGradoDto: UpdateCursoGradoDto) {
-    return await this.cursoGradoService.update(+id, updateCursoGradoDto);
-  }
-
-  @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return await this.cursoGradoService.remove(+id);
-  }
 }

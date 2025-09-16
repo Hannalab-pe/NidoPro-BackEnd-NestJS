@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCursoDto } from './dto/create-curso.dto';
 import { UpdateCursoDto } from './dto/update-curso.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -34,7 +34,7 @@ export class CursoService {
   async update(id: string, updateCursoDto: UpdateCursoDto): Promise<Curso | null> {
     const cursoFound = await this.cursoRepository.findOne({ where: { idCurso: id, estaActivo: true } });
     if (!cursoFound) {
-      throw new Error(`Curso with id ${id} not found`);
+      throw new NotFoundException(`Curso with id ${id} not found`);
     }
     await this.cursoRepository.update({ idCurso: id }, updateCursoDto);
     return this.findOne(id);
@@ -43,7 +43,7 @@ export class CursoService {
   async delete(id: string): Promise<void> {
     const cursoFound = await this.cursoRepository.findOne({ where: { idCurso: id } });
     if (!cursoFound) {
-      throw new Error(`Curso with id ${id} not found`);
+      throw new NotFoundException(`Curso with id ${id} not found`);
     }
     cursoFound.estaActivo = false;
     await this.cursoRepository.save(cursoFound);

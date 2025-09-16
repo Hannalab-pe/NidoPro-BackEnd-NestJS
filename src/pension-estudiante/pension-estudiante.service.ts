@@ -42,7 +42,7 @@ export class PensionEstudianteService {
 
       return await this.pensionRepository.save(pension);
     } catch (error) {
-
+      throw new BadRequestException('Error al crear la pensión: ' + error.message);
     }
   }
 

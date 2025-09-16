@@ -34,7 +34,7 @@ export class BimestreService {
 
       bimestres.push({
         numero: i + 1,
-        inicio: inicioBimestre.toISOString().split('T')[0], // YYYY-MM-DD
+        inicio: inicioBimestre.toISOString().split('T')[0],
         fin: finBimestre.toISOString().split('T')[0],
       });
 

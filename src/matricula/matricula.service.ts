@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateMatriculaDto } from './dto/create-matricula.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Matricula } from './entities/matricula.entity';
@@ -58,7 +58,7 @@ export class MatriculaService {
       if (!apoderado) {
         // Validar que se proporcionaron datos del apoderado
         if (!createMatriculaDto.apoderadoData) {
-          throw new Error(
+          throw new BadRequestException(
             'Se requiere proporcionar idApoderado o apoderadoData para crear la matrícula',
           );
         }
@@ -70,7 +70,7 @@ export class MatriculaService {
           !createMatriculaDto.apoderadoData.tipoDocumentoIdentidad ||
           !createMatriculaDto.apoderadoData.documentoIdentidad
         ) {
-          throw new Error(
+          throw new BadRequestException(
             'Para crear un apoderado son requeridos: nombre, apellido, tipoDocumentoIdentidad y documentoIdentidad',
           );
         }
@@ -136,7 +136,7 @@ export class MatriculaService {
       if (!estudiante) {
         // Validar que se proporcionaron datos del estudiante
         if (!createMatriculaDto.estudianteData) {
-          throw new Error(
+          throw new BadRequestException(
             'Se requiere proporcionar idEstudiante o estudianteData para crear la matrícula',
           );
         }
@@ -147,7 +147,7 @@ export class MatriculaService {
           !createMatriculaDto.estudianteData.apellido ||
           !createMatriculaDto.estudianteData.nroDocumento
         ) {
-          throw new Error(
+          throw new BadRequestException(
             'Para crear un estudiante son requeridos: nombre, apellido, idRol y nroDocumento',
           );
         }
@@ -244,7 +244,7 @@ export class MatriculaService {
       // === VERIFICAR GRADO CON PENSIÓN ===
       const grado = await this.gradoService.findOne(createMatriculaDto.idGrado);
       if (!grado) {
-        throw new Error(
+        throw new NotFoundException(
           'Grado no encontrado. Verifique que el ID del grado sea válido',
         );
       }
@@ -254,14 +254,14 @@ export class MatriculaService {
         !createMatriculaDto.idApoderado &&
         !createMatriculaDto.apoderadoData
       ) {
-        throw new Error('Se requiere proporcionar idApoderado o apoderadoData');
+        throw new BadRequestException('Se requiere proporcionar idApoderado o apoderadoData');
       }
 
       if (
         !createMatriculaDto.idEstudiante &&
         !createMatriculaDto.estudianteData
       ) {
-        throw new Error(
+        throw new BadRequestException(
           'Se requiere proporcionar idEstudiante o estudianteData',
         );
       }
@@ -272,7 +272,7 @@ export class MatriculaService {
 
       const matriculaExistente = await manager.findOne(Matricula, {
         where: {
-          idEstudiante: estudiante.idEstudiante ,
+          idEstudiante: estudiante.idEstudiante,
           anioEscolar: anioEscolarActual,
         },
         relations: ['matriculaAula', 'matriculaAula.aula'],
@@ -315,7 +315,7 @@ export class MatriculaService {
       });
 
       if (!matriculaCompleta) {
-        throw new Error('Error al recuperar la matrícula creada');
+        throw new BadRequestException('Error al recuperar la matrícula creada');
       }
 
       try {
@@ -332,10 +332,10 @@ export class MatriculaService {
           const aulaEspecifica = await this.aulaRepository.aulaEspecifica(
             createMatriculaDto.idAulaEspecifica,
             createMatriculaDto.idGrado,
-          );
+          ); 
 
           if (!aulaEspecifica) {
-            throw new Error(
+            throw new NotFoundException(
               'El aula especificada no existe o no pertenece al grado seleccionado',
             );
           }
@@ -350,7 +350,7 @@ export class MatriculaService {
           );
 
           if (!aulaDisponible) {
-            throw new Error('El aula especificada no tiene cupos disponibles');
+            throw new BadRequestException('El aula especificada no tiene cupos disponibles');
           }
 
           aulaAsignada = aulaEspecifica;
@@ -367,7 +367,7 @@ export class MatriculaService {
             );
 
           if (aulasDisponibles.length === 0) {
-            throw new Error(
+            throw new BadRequestException(
               'No hay aulas disponibles para el grado seleccionado',
             );
           }
@@ -401,7 +401,7 @@ export class MatriculaService {
           matriculaCompleta.matriculaAula = asignacionCompleta;
         }
       } catch (error) {
-        throw new Error('Error al asignar aula a la matrícula', error);
+        throw new BadRequestException('Error al asignar aula a la matrícula', error);
       }
 
       // === REGISTRAR AUTOMÁTICAMENTE EN CAJA SIMPLE ===
@@ -430,10 +430,7 @@ export class MatriculaService {
           console.log('ℹ️ No se registró en caja simple: matrícula sin costo o costo = 0');
         }
       } catch (error) {
-        console.error('❌ Error al registrar matrícula en caja simple:', error);
-        // No lanzamos el error para no fallar toda la transacción de matrícula
-        // Solo logueamos el error para investigación posterior
-        console.error('⚠️ La matrícula se completó exitosamente pero no se pudo registrar en caja simple');
+        throw new BadRequestException(`Error al registrar la matrícula en caja simple: ${error.message}`);
       }
 
       return matriculaCompleta;
@@ -914,12 +911,12 @@ export class MatriculaService {
       const matricula = await this.findOne(idMatricula);
 
       if (!matricula) {
-        throw new Error('Matrícula no encontrada');
+        throw new NotFoundException('Matrícula no encontrada');
       }
 
       // Verificar que tiene costo
       if (!matricula.costoMatricula || parseFloat(matricula.costoMatricula) <= 0) {
-        throw new Error('La matrícula no tiene un costo válido para registrar en caja simple');
+        throw new BadRequestException('La matrícula no tiene un costo válido para registrar en caja simple');
       }
 
       // Preparar datos para el registro en caja simple
@@ -954,7 +951,7 @@ export class MatriculaService {
       };
     } catch (error) {
       console.error('Error al registrar matrícula en caja simple:', error);
-      throw new Error(`No se pudo registrar la matrícula en caja simple: ${error.message}`);
+      throw new BadRequestException(`No se pudo registrar la matrícula en caja simple: ${error.message}`);
     }
   }
 

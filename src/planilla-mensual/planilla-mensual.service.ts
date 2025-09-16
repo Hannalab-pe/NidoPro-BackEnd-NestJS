@@ -454,7 +454,8 @@ export class PlanillaMensualService {
 
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      throw error;
+      throw new BadRequestException(`Error al aprobar la planilla: ${error.message}`);
+      
     } finally {
       await queryRunner.release();
     }
@@ -534,7 +535,7 @@ export class PlanillaMensualService {
             planilla.estadoPlanilla !== EstadoPlanilla.GENERADA &&
             planilla.estadoPlanilla !== EstadoPlanilla.EN_REVISION
           ) {
-            throw new Error(`Planilla ${planilla.mes}/${planilla.anio} no puede ser aprobada en estado ${planilla.estadoPlanilla}`);
+            throw new BadRequestException(`Planilla ${planilla.mes}/${planilla.anio} no puede ser aprobada en estado ${planilla.estadoPlanilla}`);
           }
 
           // Actualizar planilla
@@ -618,6 +619,7 @@ export class PlanillaMensualService {
 
     } catch (error) {
       await queryRunner.rollbackTransaction();
+      throw new BadRequestException(`Error al procesar la planilla: ${error.message}`);
       throw error;
     } finally {
       await queryRunner.release();

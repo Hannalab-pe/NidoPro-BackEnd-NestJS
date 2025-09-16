@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreatePensionDto } from './dto/create-pension.dto';
 import { UpdatePensionDto } from './dto/update-pension.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -59,7 +59,7 @@ export class PensionService {
   async update(id: string, updatePensionDto: UpdatePensionDto): Promise<Pension | null> {
     const pensionFound = await this.pensionRepository.findOne({ where: { idPension: id } });
     if (!pensionFound) {
-      throw new Error(`Pension with id ${id} not found`);
+      throw new NotFoundException(`Pension with id ${id} not found`);
     }
 
     const updateData: any = {};

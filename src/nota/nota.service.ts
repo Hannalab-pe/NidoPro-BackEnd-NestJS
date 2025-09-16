@@ -266,7 +266,7 @@ export class NotaService {
   async update(id: string, updateNotaDto: UpdateNotaDto): Promise<Nota | null> {
     const notaFound = await this.notaRepository.findOne({ where: { idNota: id } });
     if (!notaFound) {
-      throw new Error(`Nota with id ${id} not found`);
+      throw new NotFoundException(`Nota with id ${id} not found`);
     }
 
     const updateData: any = {
