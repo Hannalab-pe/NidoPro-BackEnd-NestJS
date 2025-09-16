@@ -427,13 +427,27 @@ export class TrabajadorService {
       .getMany();
   }
 
-  async findTrabajadorSinDetallePorContratoPlanilla() {
-    return await this.trabajadorRepository.createQueryBuilder('trabajador')
+  async findTrabajadorSinDetallePorContratoPlanilla(mes?: number, anio?: number) {
+    let queryBuilder = this.trabajadorRepository.createQueryBuilder('trabajador')
       .innerJoinAndSelect('trabajador.contratoTrabajadors3', 'contrato')
       .innerJoinAndSelect('contrato.idTipoContrato', 'tipoContrato')
       .leftJoin('trabajador.detallePlanillas', 'detallePlanilla')
-      .where('detallePlanilla.idDetallePlanilla IS NULL')
-      .andWhere('tipoContrato.nombreTipo = :nombreTipo', { nombreTipo: 'CONTRATO_PLANILLA' })
+      .leftJoin('detallePlanilla.idPlanillaMensual2', 'planillaMensual')
+      .where('tipoContrato.nombreTipo = :nombreTipo', { nombreTipo: 'CONTRATO_PLANILLA' });
+
+    // Si se proporcionan mes y año, filtrar por planilla específica
+    if (mes && anio) {
+      queryBuilder = queryBuilder
+        .andWhere('(planillaMensual.idPlanillaMensual IS NULL OR (planillaMensual.mes != :mes OR planillaMensual.anio != :anio))', { mes, anio });
+    } else {
+      // Si no se especifica mes/año, buscar trabajadores sin ningún detalle de planilla
+      queryBuilder = queryBuilder
+        .andWhere('detallePlanilla.idDetallePlanilla IS NULL');
+    }
+
+    return await queryBuilder
+      .orderBy('trabajador.apellido', 'ASC')
+      .addOrderBy('trabajador.nombre', 'ASC')
       .getMany();
   }
 }
