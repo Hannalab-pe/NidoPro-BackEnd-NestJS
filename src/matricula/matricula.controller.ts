@@ -10,14 +10,14 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { MatriculaService } from './matricula.service';
-import { CreateMatriculaDto } from './dto/create-matricula.dto';
+import { CreateMatriculaDto, ActualizarContactosMatriculaDto } from './dto/create-matricula.dto';
 import { ApiOperation, ApiQuery, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { SearchMatriculaDto } from './dto/search-matricula.dto';
 import { RegistrarMatriculaEnCajaSimpleDto } from './dto/registrar-caja-simple.dto';
 
 @Controller('matricula')
 export class MatriculaController {
-  constructor(private readonly matriculaService: MatriculaService) {}
+  constructor(private readonly matriculaService: MatriculaService) { }
 
   @Post()
   @ApiOperation({ summary: 'Registrar una nueva matrícula para un estudiante' })
@@ -317,6 +317,48 @@ export class MatriculaController {
         success: true,
         message: result.message,
         info: result
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        info: null
+      };
+    }
+  }
+
+  @Patch('actualizar-contactos/:id')
+  @ApiOperation({
+    summary: 'Actualizar datos de contacto de una matrícula',
+    description: 'Permite actualizar datos del apoderado, contactos de emergencia existentes y agregar nuevos contactos'
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'UUID de la matrícula',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Datos de contacto actualizados exitosamente',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos inválidos o ID de matrícula incorrecto',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Matrícula no encontrada',
+  })
+  async actualizarDatosContacto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateData: ActualizarContactosMatriculaDto
+  ) {
+    try {
+      const result = await this.matriculaService.actualizarDatosContacto(id, updateData);
+      return {
+        success: true,
+        message: 'Datos de contacto actualizados exitosamente',
+        info: { data: result }
       };
     } catch (error) {
       return {
