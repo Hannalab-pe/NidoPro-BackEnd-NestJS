@@ -369,6 +369,41 @@ export class MatriculaController {
     }
   }
 
+  @Delete('anular/:id')
+  @ApiOperation({
+    summary: 'Anular una matrícula',
+    description: 'Anula una matrícula y elimina al estudiante si no tiene otras matrículas activas'
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'UUID de la matrícula a anular',
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Matrícula anulada correctamente',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'No se puede anular la matrícula (ya anulada o con dependencias)',
+  })
+  async anularMatricula(@Param('id') idMatricula: string) {
+    try {
+      await this.matriculaService.AnularMatricula(idMatricula);
+      return {
+        success: true,
+        message: `Matrícula anulada correctamente: ${idMatricula}`,
+        info: null
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        info: null
+      };
+    }
+  }
+
   // ===== RUTAS GENÉRICAS AL FINAL =====
 
   @Get()

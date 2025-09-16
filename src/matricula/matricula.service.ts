@@ -1,8 +1,8 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { ActualizarContactosMatriculaDto, CreateMatriculaDto } from './dto/create-matricula.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Matricula } from './entities/matricula.entity';
-import { Repository, DataSource, SelectQueryBuilder } from 'typeorm';
+import { Repository, DataSource, SelectQueryBuilder, Not } from 'typeorm';
 import { ApoderadoService } from 'src/apoderado/apoderado.service';
 import { EstudianteService } from 'src/estudiante/estudiante.service';
 import { GradoService } from 'src/grado/grado.service';
@@ -12,6 +12,8 @@ import { AulaService } from 'src/aula/aula.service';
 import { ContactoEmergencia } from 'src/contacto-emergencia/entities/contacto-emergencia.entity';
 import { CajaSimpleService } from 'src/caja-simple/caja-simple.service';
 import { CrearIngresoPorMatriculaDto } from 'src/caja-simple/dto/crear-movimientos.dto';
+import { Apoderado } from 'src/apoderado/entities/apoderado.entity';
+import { Estudiante } from 'src/estudiante/entities/estudiante.entity';
 
 @Injectable()
 export class MatriculaService {
@@ -1089,6 +1091,117 @@ export class MatriculaService {
       // 5. Retornar matrícula actualizada con todos los datos
       return await this.findOne(idMatricula);
     });
+  }
+
+  async AnularMatricula(idMatricula: string): Promise<any> {
+    const matriculaFound = await this.matriculaRepository.findOne({
+      where: { idMatricula },
+      relations: ['idApoderado', 'idEstudiante']
+    });
+    if (!matriculaFound) {
+      throw new NotFoundException('Matrícula no encontrada');
+    }
+    try {
+
+      //VALIDAMOS ELIMINACION DE APODERADO
+      const tieneOtrasMatriculas = await this.matriculaRepository
+        .createQueryBuilder('matricula')
+        .where('matricula.idApoderado = :idApoderado', {
+          idApoderado: matriculaFound.idApoderado.idApoderado
+        })
+        .andWhere('matricula.idMatricula != :idMatricula', {
+          idMatricula
+        })
+        .getCount();
+
+      //VALIDAREMOS PRIMERO SI TIENE OTRA MATRICULA Y ELIMINAREMOS SI ES LA UNICA
+      await this.dataSource.transaction(async (manager) => {
+        if (tieneOtrasMatriculas === 0) {
+          //Buscaremos al apoderado en base a la matricula que se identifico
+          const apoderado = await manager.findOne(Apoderado, {
+            where: { idApoderado: matriculaFound.idApoderado.idApoderado }
+          });
+          //ELIMINAR APODERADO
+          await manager.delete(Apoderado, { idApoderado: apoderado?.idApoderado });
+          console.log(`🗑️ Apoderado eliminado: ${apoderado?.idApoderado}`);
+
+          //Buscamos estudiante en base a la matricula que se identifico
+          const estudiante = await manager.findOne(Estudiante, {
+            where: { idEstudiante: matriculaFound.idEstudiante.idEstudiante }
+          });
+
+          //VERIFICAMOS SI EL ESTUDIANTE ESTA ASIGNADO A UN AULA EN MATRICULA_AULA
+          const asignacionAula = await manager.findOne(MatriculaAula, {
+            where: { idMatricula: idMatricula }
+          });
+
+          if (asignacionAula) {
+            await manager.delete(MatriculaAula, { idMatricula: asignacionAula.idMatricula });
+          }
+
+          // ELIMINAR REGISTROS EN CAJA SIMPLE RELACIONADOS CON EL ESTUDIANTE
+          await manager.query(
+            'DELETE FROM caja_simple WHERE id_estudiante = $1',
+            [estudiante?.idEstudiante]
+          );
+
+          // ELIMINAR CONTACTOS DE EMERGENCIA DEL ESTUDIANTE
+          await manager.query(
+            'DELETE FROM contacto_emergencia WHERE id_estudiante = $1',
+            [estudiante?.idEstudiante]
+          );
+
+          // ELIMINAR ESTUDIANTE
+          await manager.delete(Estudiante, { idEstudiante: estudiante?.idEstudiante });
+
+          //ELIMINAR MATRÍCULA
+          await manager.delete(Matricula, { idMatricula });
+
+        }
+        else {
+          //Buscamos estudiante en base a la matricula que se identifico
+          const estudiante = await manager.findOne(Estudiante, {
+            where: { idEstudiante: matriculaFound.idEstudiante.idEstudiante }
+          });
+
+          // VERIFICAR Y ELIMINAR ASIGNACIÓN DE AULA
+          const asignacionAula = await manager.findOne(MatriculaAula, {
+            where: { idMatricula: idMatricula }
+          });
+
+          if (asignacionAula) {
+            await manager.delete(MatriculaAula, { idMatricula: asignacionAula.idMatricula });
+          }
+
+          // ELIMINAR REGISTROS EN CAJA SIMPLE RELACIONADOS CON EL ESTUDIANTE
+          await manager.query(
+            'DELETE FROM caja_simple WHERE id_estudiante = $1',
+            [estudiante?.idEstudiante]
+          );
+
+          // ELIMINAR CONTACTOS DE EMERGENCIA DEL ESTUDIANTE
+          await manager.query(
+            'DELETE FROM contacto_emergencia WHERE id_estudiante = $1',
+            [estudiante?.idEstudiante]
+          );
+
+          //ELIMINAR MATRÍCULA
+          await manager.delete(Matricula, { idMatricula });
+          console.log(`🗑️ Matrícula eliminada: ${idMatricula}`);
+
+          // ELIMINAR ESTUDIANTE
+          await manager.delete(Estudiante, { idEstudiante: estudiante?.idEstudiante });
+          console.log(`🗑️ Estudiante eliminado: ${estudiante?.idEstudiante}`);
+
+        }
+      });
+
+      return { message: `Matrícula anulada correctamente: ${idMatricula}` };
+
+
+    } catch (error) {
+      throw new InternalServerErrorException('Error al anular matrícula');
+    }
   }
 
 }
