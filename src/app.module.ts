@@ -46,6 +46,7 @@ import { CajaSimpleModule } from './caja-simple/caja-simple.module';
 import { ContactoEmergenciaModule } from './contacto-emergencia/contacto-emergencia.module';
 import { PlanificacionModule } from './planificacion/planificacion.module';
 import { ComentarioDocenteModule } from './comentario-docente/comentario-docente.module';
+import { RAGModule } from './rag/rag.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { ComentarioDocenteModule } from './comentario-docente/comentario-docente
       schema: process.env.DB_SCHEMA,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
     }),
+    RAGModule,
     ApoderadoModule,
     AsignacionAulaModule,
     AsignacionCursoModule,
