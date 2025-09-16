@@ -127,4 +127,34 @@ export class AulaService {
     }));
   }
 
+  async validarCuposDisponibles(idAula: string): Promise<{ tieneEspacio: boolean, detalles: any }> {
+    // Obtener el grado del aula para poder usar getAulasDisponiblesConDetalles
+    const aula = await this.aulaRepository.findOne({
+      where: { idAula: idAula },
+      relations: ['idGrado']
+    });
+
+    if (!aula) {
+      throw new NotFoundException(`Aula con ID ${idAula} no encontrada`);
+    }
+
+    // Usar el método existente para obtener detalles con cupos disponibles
+    const aulasConDetalles = await this.getAulasDisponiblesConDetalles(aula.idGrado.idGrado);
+
+    // Buscar el aula específica en los resultados
+    const aulaDetallada = aulasConDetalles.find(aulaDetalle => aulaDetalle.idAula === idAula);
+
+    if (!aulaDetallada) {
+      return {
+        tieneEspacio: false,
+        detalles: null
+      };
+    }
+
+    return {
+      tieneEspacio: aulaDetallada.cuposDisponibles > 0,
+      detalles: aulaDetallada
+    };
+  }
+
 }

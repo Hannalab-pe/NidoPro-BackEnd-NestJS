@@ -332,7 +332,7 @@ export class MatriculaService {
           const aulaEspecifica = await this.aulaRepository.aulaEspecifica(
             createMatriculaDto.idAulaEspecifica,
             createMatriculaDto.idGrado,
-          ); 
+          );
 
           if (!aulaEspecifica) {
             throw new NotFoundException(
@@ -340,42 +340,49 @@ export class MatriculaService {
             );
           }
 
-          // Verificar disponibilidad del aula específica
-          const aulasDisponibles =
-            await this.aulaRepository.buscarPorCantidadGrado(
-              createMatriculaDto.idGrado,
-            );
-          const aulaDisponible = aulasDisponibles.find(
-            (aula) => aula.idAula === createMatriculaDto.idAulaEspecifica,
+          // Validar cupos disponibles usando el nuevo método
+          const validacionCupos = await this.aulaRepository.validarCuposDisponibles(
+            createMatriculaDto.idAulaEspecifica
           );
 
-          if (!aulaDisponible) {
-            throw new BadRequestException('El aula especificada no tiene cupos disponibles');
+          if (!validacionCupos.tieneEspacio) {
+            throw new BadRequestException(
+              `El aula sección ${validacionCupos.detalles?.seccion || 'desconocida'} no tiene cupos disponibles. ` +
+              `Capacidad: ${validacionCupos.detalles?.cantidadEstudiantes || 0}, ` +
+              `Asignados: ${validacionCupos.detalles?.estudiantesAsignados || 0}, ` +
+              `Cupos disponibles: ${validacionCupos.detalles?.cuposDisponibles || 0}`
+            );
           }
 
-          aulaAsignada = aulaEspecifica;
+          aulaAsignada = validacionCupos.detalles;
 
           // Log para registro administrativo
           console.log(
-            `🎯 Asignación MANUAL de aula: Estudiante asignado a ${aulaEspecifica.seccion} por motivo: ${createMatriculaDto.motivoPreferencia || 'No especificado'}`,
+            `🎯 Asignación MANUAL de aula: Estudiante asignado a sección ${aulaAsignada.seccion} por motivo: ${createMatriculaDto.motivoPreferencia || 'No especificado'}`,
           );
         } else {
-          // === ASIGNACIÓN AUTOMÁTICA (LÓGICA ORIGINAL) ===
-          const aulasDisponibles =
-            await this.aulaRepository.buscarPorCantidadGrado(
-              createMatriculaDto.idGrado,
-            );
+          // === ASIGNACIÓN AUTOMÁTICA (MEJORADA CON VALIDACIÓN DE CUPOS) ===
+          const aulasConDetalles = await this.aulaRepository.getAulasDisponiblesConDetalles(
+            createMatriculaDto.idGrado
+          );
+
+          // Filtrar solo las que tienen cupos disponibles
+          const aulasDisponibles = aulasConDetalles.filter(aula => aula.cuposDisponibles > 0);
 
           if (aulasDisponibles.length === 0) {
             throw new BadRequestException(
-              'No hay aulas disponibles para el grado seleccionado',
+              'No hay aulas disponibles para el grado seleccionado'
             );
           }
 
-          aulaAsignada = aulasDisponibles[0]; // Primera aula disponible (mejor opción)
+          // Ordenar por cupos disponibles (las que tienen más espacio primero para distribución equilibrada)
+          aulasDisponibles.sort((a, b) => b.cuposDisponibles - a.cuposDisponibles);
+
+          aulaAsignada = aulasDisponibles[0]; // La primera con más cupos disponibles
 
           console.log(
-            `🤖 Asignación AUTOMÁTICA de aula: Estudiante asignado a sección ${aulaAsignada.seccion} (distribución equilibrada)`,
+            `🤖 Asignación AUTOMÁTICA de aula: Estudiante asignado a sección ${aulaAsignada.seccion} ` +
+            `(Cupos disponibles: ${aulaAsignada.cuposDisponibles}/${aulaAsignada.cantidadEstudiantes})`,
           );
         }
 
@@ -401,7 +408,17 @@ export class MatriculaService {
           matriculaCompleta.matriculaAula = asignacionCompleta;
         }
       } catch (error) {
-        throw new BadRequestException('Error al asignar aula a la matrícula', error);
+        // Si el error es sobre validación de cupos o aula no encontrada, propagarlo directamente
+        if (error instanceof BadRequestException || error instanceof NotFoundException) {
+          if (error.message.includes('cupos disponibles') ||
+            error.message.includes('aula especificada') ||
+            error.message.includes('aula sección')) {
+            throw error; // Propagar el error original sin modificar
+          }
+        }
+
+        // Para otros errores, usar el mensaje genérico
+        throw new BadRequestException('Error al asignar aula a la matrícula', error.message || error);
       }
 
       // === REGISTRAR AUTOMÁTICAMENTE EN CAJA SIMPLE ===
@@ -410,6 +427,24 @@ export class MatriculaService {
         if (matriculaCompleta.costoMatricula && parseFloat(matriculaCompleta.costoMatricula) > 0) {
           console.log('💰 Registrando matrícula en caja simple...');
 
+          // Validar que el registradoPor existe en la tabla trabajador si se proporciona
+          let registradoPorValido = '00000000-0000-0000-0000-000000000000'; // ID por defecto
+
+          if (createMatriculaDto.registradoPor) {
+            // Verificar que el trabajador existe
+            const trabajadorExiste = await manager.query(
+              'SELECT id_trabajador FROM trabajador WHERE id_trabajador = $1',
+              [createMatriculaDto.registradoPor]
+            );
+
+            if (trabajadorExiste && trabajadorExiste.length > 0) {
+              registradoPorValido = createMatriculaDto.registradoPor;
+              console.log(`✅ Trabajador validado: ${createMatriculaDto.registradoPor}`);
+            } else {
+              console.log(`⚠️  Trabajador no encontrado (${createMatriculaDto.registradoPor}), usando ID por defecto`);
+            }
+          }
+
           // Preparar datos para el registro en caja simple
           const registroCajaDto: CrearIngresoPorMatriculaDto = {
             idEstudiante: matriculaCompleta.idEstudiante.idEstudiante,
@@ -417,7 +452,7 @@ export class MatriculaService {
             metodoPago: matriculaCompleta.metodoPago || 'EFECTIVO',
             numeroComprobante: matriculaCompleta.voucherImg ?
               `MAT-${matriculaCompleta.idMatricula.substring(0, 8)}` : undefined,
-            registradoPor: createMatriculaDto.registradoPor || '00000000-0000-0000-0000-000000000000', // ID por defecto si no se proporciona
+            registradoPor: registradoPorValido,
             periodoEscolar: new Date().getFullYear().toString()
           };
 
@@ -430,6 +465,14 @@ export class MatriculaService {
           console.log('ℹ️ No se registró en caja simple: matrícula sin costo o costo = 0');
         }
       } catch (error) {
+        // Manejo especial para errores de foreign key
+        if (error.code === '23503' && error.detail?.includes('registrado_por')) {
+          console.error('❌ Error de foreign key en registrado_por:', error.detail);
+          throw new BadRequestException(
+            'El ID del trabajador proporcionado no existe en el sistema. ' +
+            'Verifique que el trabajador esté registrado correctamente.'
+          );
+        }
         throw new BadRequestException(`Error al registrar la matrícula en caja simple: ${error.message}`);
       }
 
@@ -917,6 +960,16 @@ export class MatriculaService {
       // Verificar que tiene costo
       if (!matricula.costoMatricula || parseFloat(matricula.costoMatricula) <= 0) {
         throw new BadRequestException('La matrícula no tiene un costo válido para registrar en caja simple');
+      }
+
+      // Validar que el registradoPor existe en la tabla trabajador
+      const trabajadorExiste = await this.dataSource.query(
+        'SELECT id_trabajador FROM trabajador WHERE id_trabajador = $1',
+        [registradoPor]
+      );
+
+      if (!trabajadorExiste || trabajadorExiste.length === 0) {
+        throw new BadRequestException(`El trabajador con ID ${registradoPor} no existe en el sistema`);
       }
 
       // Preparar datos para el registro en caja simple

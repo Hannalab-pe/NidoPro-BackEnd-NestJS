@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { TrabajadorService } from './trabajador.service';
 import { CreateTrabajadorDto } from './dto/create-trabajador.dto';
@@ -51,8 +52,8 @@ export class TrabajadorController {
 
   @Get('tipo-contrato-planilla')
   @ApiOperation({ summary: 'Obtener todos los trabajadores sin detalle pero por contrato Planilla' })
-  async findTrabajadorSinDetallePorContratoPlanilla() {
-    return await this.trabajadorService.findTrabajadorSinDetallePorContratoPlanilla();
+  async findTrabajadorSinDetallePorContratoPlanilla(@Query('mes') mes?: number, @Query('anio') anio?: number) {
+    return await this.trabajadorService.findTrabajadorSinDetallePorContratoPlanilla(mes, anio);
   }
 
   @Get('aulas/:idTrabajador')
