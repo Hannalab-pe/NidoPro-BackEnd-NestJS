@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { CreateMatriculaDto } from './dto/create-matricula.dto';
+import { ActualizarContactosMatriculaDto, CreateMatriculaDto } from './dto/create-matricula.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Matricula } from './entities/matricula.entity';
 import { Repository, DataSource, SelectQueryBuilder } from 'typeorm';
@@ -32,8 +32,6 @@ export class MatriculaService {
       let apoderado: any = null;
       let estudiante: any = null;
 
-      // === MANEJO DEL APODERADO ===
-
       // Si se proporciona ID, buscar por ID primero
       if (createMatriculaDto.idApoderado) {
         apoderado = await this.apoderadoService.findOne(
@@ -49,7 +47,6 @@ export class MatriculaService {
             createMatriculaDto.apoderadoData.documentoIdentidad,
           );
         } catch (error) {
-          // Si no existe el método findByDocumento, continuamos
           apoderado = null;
         }
       }
@@ -98,7 +95,7 @@ export class MatriculaService {
             createMatriculaDto.apoderadoData.tipoDocumentoIdentidad,
           documentoIdentidad:
             createMatriculaDto.apoderadoData.documentoIdentidad,
-          esPrincipal: createMatriculaDto.apoderadoData.esPrincipal ?? true, // Por defecto es principal
+          esPrincipal: createMatriculaDto.apoderadoData.esPrincipal ?? true,
           tipoApoderado:
             createMatriculaDto.apoderadoData.tipoApoderado || 'principal',
         };
@@ -152,7 +149,7 @@ export class MatriculaService {
           );
         }
 
-        // 1️⃣ PRIMERO: Crear DTO para el servicio de estudiante
+        // PRIMERO: Crear DTO para el servicio de estudiante
         const createEstudianteDto: any = {
           nombre: createMatriculaDto.estudianteData.nombre,
           apellido: createMatriculaDto.estudianteData.apellido,
@@ -161,42 +158,21 @@ export class MatriculaService {
           nroDocumento: createMatriculaDto.estudianteData.nroDocumento,
           observaciones:
             createMatriculaDto.estudianteData.observaciones || null,
-          idRol: '35225955-5aeb-4df0-8014-1cdfbce9b41e',  // ID fijo para "estudiante"
+          idRol: '35225955-5aeb-4df0-8014-1cdfbce9b41e',
           imagen_estudiante:
             createMatriculaDto.estudianteData.imagen_estudiante || null,
         };
 
-        // 2️⃣ CREAR EL ESTUDIANTE
+        //  CREAR EL ESTUDIANTE
         const resultadoEstudiante =
           await this.estudianteService.create(createEstudianteDto);
         estudiante = resultadoEstudiante.estudiante || resultadoEstudiante;
       }
 
-      // === 3️⃣ CREAR CONTACTOS DE EMERGENCIA (SIEMPRE, INDEPENDIENTE DE SI ES NUEVO O EXISTENTE) ===
-      console.log(
-        '🔍 DEBUGGING COMPLETO - createMatriculaDto:',
-        JSON.stringify(createMatriculaDto, null, 2),
-      );
-      console.log(
-        '🔍 DEBUGGING - estudianteData completo:',
-        createMatriculaDto.estudianteData,
-      );
-      console.log('🔍 DEBUGGING - Datos de contactos:', {
-        tieneEstudianteData: !!createMatriculaDto.estudianteData,
-        tieneContactos:
-          !!createMatriculaDto.estudianteData?.contactosEmergencia,
-        cantidadContactos:
-          createMatriculaDto.estudianteData?.contactosEmergencia?.length || 0,
-        contactos: createMatriculaDto.estudianteData?.contactosEmergencia,
-        tipoDeContactos:
-          typeof createMatriculaDto.estudianteData?.contactosEmergencia,
-      });
+      // CREAR CONTACTOS DE EMERGENCIA
 
-      if (
-        createMatriculaDto.estudianteData?.contactosEmergencia &&
-        createMatriculaDto.estudianteData.contactosEmergencia.length > 0
-      ) {
-        console.log('✅ Creando contactos de emergencia...');
+      if (createMatriculaDto.estudianteData?.contactosEmergencia && createMatriculaDto.estudianteData.contactosEmergencia.length > 0) {
+
         for (const contactoData of createMatriculaDto.estudianteData
           .contactosEmergencia) {
           const contactoEmergencia = new ContactoEmergencia();
@@ -206,42 +182,23 @@ export class MatriculaService {
           contactoEmergencia.email = contactoData.email || null;
           contactoEmergencia.tipoContacto = contactoData.tipoContacto;
           contactoEmergencia.relacionEstudiante =
-            contactoData.relacionEstudiante || contactoData.tipoContacto; // Si no se proporciona, usar tipoContacto
+            contactoData.relacionEstudiante || contactoData.tipoContacto;
           contactoEmergencia.esPrincipal = contactoData.esPrincipal || false;
           contactoEmergencia.prioridad = contactoData.prioridad || 1;
-          contactoEmergencia.idEstudiante = estudiante; // TypeORM maneja automáticamente la asignación de la entidad
+          contactoEmergencia.idEstudiante = estudiante;
 
           const contactoGuardado = await manager.save(
             ContactoEmergencia,
             contactoEmergencia,
           );
           console.log(
-            '📞 Contacto guardado:',
+            'Contacto guardado:',
             contactoGuardado.nombre,
             contactoGuardado.apellido,
           );
         }
-      } else {
-        console.log(
-          '❌ No se enviaron contactos de emergencia o array está vacío',
-        );
-        console.log('❌ Condiciones del if:');
-        console.log(
-          '   - createMatriculaDto.estudianteData existe:',
-          !!createMatriculaDto.estudianteData,
-        );
-        console.log(
-          '   - contactosEmergencia existe:',
-          !!createMatriculaDto.estudianteData?.contactosEmergencia,
-        );
-        console.log(
-          '   - contactosEmergencia.length > 0:',
-          (createMatriculaDto.estudianteData?.contactosEmergencia?.length ||
-            0) > 0,
-        );
       }
 
-      // === VERIFICAR GRADO CON PENSIÓN ===
       const grado = await this.gradoService.findOne(createMatriculaDto.idGrado);
       if (!grado) {
         throw new NotFoundException(
@@ -249,7 +206,6 @@ export class MatriculaService {
         );
       }
 
-      // === VERIFICAR QUE SE REQUIERE AL MENOS UN APODERADO Y UN ESTUDIANTE ===
       if (
         !createMatriculaDto.idApoderado &&
         !createMatriculaDto.apoderadoData
@@ -266,7 +222,7 @@ export class MatriculaService {
         );
       }
 
-      // === VALIDAR QUE EL ESTUDIANTE NO ESTÉ YA MATRICULADO EN EL AÑO ESCOLAR ===
+      // VALIDAR QUE EL ESTUDIANTE NO ESTÉ YA MATRICULADO EN EL AÑO ESCOLAR
       const anioEscolarActual =
         createMatriculaDto.anioEscolar || new Date().getFullYear().toString();
 
@@ -293,24 +249,24 @@ export class MatriculaService {
       matricula.fechaIngreso = createMatriculaDto.fechaIngreso;
       matricula.metodoPago = createMatriculaDto.metodoPago ?? null;
       matricula.voucherImg = createMatriculaDto.voucherImg ?? null;
-      matricula.anioEscolar = anioEscolarActual; // Usar el año escolar validado
+      matricula.anioEscolar = anioEscolarActual;
       matricula.idApoderado = apoderado;
       matricula.idEstudiante = estudiante;
       matricula.idGrado = grado;
 
       const matriculaGuardada = await manager.save(Matricula, matricula);
 
-      // === CARGAR MATRÍCULA COMPLETA CON TODAS LAS RELACIONES ===
-      // Esto incluye: datos del apoderado, estudiante (con usuario), grado (con pensión)
+      // CARGAR MATRÍCULA COMPLETA 
+
       const matriculaCompleta = await manager.findOne(Matricula, {
         where: { idMatricula: matriculaGuardada.idMatricula },
         relations: [
-          'idApoderado', // Datos completos del apoderado
-          'idEstudiante', // Datos completos del estudiante
-          'idEstudiante.idUsuario', // Usuario asociado al estudiante
-          'idEstudiante.contactosEmergencia', // Contactos de emergencia del estudiante
-          'idGrado', // Datos completos del grado
-          'idGrado.idPension', // Información de la pensión del grado
+          'idApoderado',
+          'idEstudiante',
+          'idEstudiante.idUsuario',
+          'idEstudiante.contactosEmergencia',
+          'idGrado',
+          'idGrado.idPension',
         ],
       });
 
@@ -323,7 +279,6 @@ export class MatriculaService {
         let tipoAsignacion =
           createMatriculaDto.tipoAsignacionAula || 'automatica';
 
-        // === VERIFICAR SI SE ESPECIFICÓ UN AULA Y ES ASIGNACIÓN MANUAL ===
         if (
           createMatriculaDto.idAulaEspecifica &&
           tipoAsignacion === 'manual'
@@ -340,7 +295,6 @@ export class MatriculaService {
             );
           }
 
-          // Validar cupos disponibles usando el nuevo método
           const validacionCupos = await this.aulaRepository.validarCuposDisponibles(
             createMatriculaDto.idAulaEspecifica
           );
@@ -356,12 +310,9 @@ export class MatriculaService {
 
           aulaAsignada = validacionCupos.detalles;
 
-          // Log para registro administrativo
-          console.log(
-            `🎯 Asignación MANUAL de aula: Estudiante asignado a sección ${aulaAsignada.seccion} por motivo: ${createMatriculaDto.motivoPreferencia || 'No especificado'}`,
-          );
+
         } else {
-          // === ASIGNACIÓN AUTOMÁTICA (MEJORADA CON VALIDACIÓN DE CUPOS) ===
+
           const aulasConDetalles = await this.aulaRepository.getAulasDisponiblesConDetalles(
             createMatriculaDto.idGrado
           );
@@ -375,15 +326,10 @@ export class MatriculaService {
             );
           }
 
-          // Ordenar por cupos disponibles (las que tienen más espacio primero para distribución equilibrada)
           aulasDisponibles.sort((a, b) => b.cuposDisponibles - a.cuposDisponibles);
 
-          aulaAsignada = aulasDisponibles[0]; // La primera con más cupos disponibles
+          aulaAsignada = aulasDisponibles[0];
 
-          console.log(
-            `🤖 Asignación AUTOMÁTICA de aula: Estudiante asignado a sección ${aulaAsignada.seccion} ` +
-            `(Cupos disponibles: ${aulaAsignada.cuposDisponibles}/${aulaAsignada.cantidadEstudiantes})`,
-          );
         }
 
         // === CREAR LA ASIGNACIÓN ===
@@ -421,17 +367,15 @@ export class MatriculaService {
         throw new BadRequestException('Error al asignar aula a la matrícula', error.message || error);
       }
 
-      // === REGISTRAR AUTOMÁTICAMENTE EN CAJA SIMPLE ===
+      // REGISTRO CAJA SIMPLE
       try {
-        // Solo registrar si hay un costo de matrícula y método de pago
         if (matriculaCompleta.costoMatricula && parseFloat(matriculaCompleta.costoMatricula) > 0) {
-          console.log('💰 Registrando matrícula en caja simple...');
+
 
           // Validar que el registradoPor existe en la tabla trabajador si se proporciona
-          let registradoPorValido = '00000000-0000-0000-0000-000000000000'; // ID por defecto
+          let registradoPorValido = '00000000-0000-0000-0000-000000000000';
 
           if (createMatriculaDto.registradoPor) {
-            // Verificar que el trabajador existe
             const trabajadorExiste = await manager.query(
               'SELECT id_trabajador FROM trabajador WHERE id_trabajador = $1',
               [createMatriculaDto.registradoPor]
@@ -439,13 +383,12 @@ export class MatriculaService {
 
             if (trabajadorExiste && trabajadorExiste.length > 0) {
               registradoPorValido = createMatriculaDto.registradoPor;
-              console.log(`✅ Trabajador validado: ${createMatriculaDto.registradoPor}`);
+
             } else {
-              console.log(`⚠️  Trabajador no encontrado (${createMatriculaDto.registradoPor}), usando ID por defecto`);
+              console.log(`Trabajador no encontrado (${createMatriculaDto.registradoPor}), usando ID por defecto ${registradoPorValido}`);
             }
           }
 
-          // Preparar datos para el registro en caja simple
           const registroCajaDto: CrearIngresoPorMatriculaDto = {
             idEstudiante: matriculaCompleta.idEstudiante.idEstudiante,
             monto: parseFloat(matriculaCompleta.costoMatricula),
@@ -457,17 +400,14 @@ export class MatriculaService {
           };
 
           // Registrar el movimiento en caja simple
-          const movimientoCaja = await this.cajaSimpleService.crearIngresoPorMatricula(registroCajaDto);
+          await this.cajaSimpleService.crearIngresoPorMatricula(registroCajaDto);
 
-          console.log(`✅ Matrícula registrada en caja simple con ID: ${movimientoCaja.idMovimiento}`);
-          console.log(`📊 Detalle: ${matriculaCompleta.idEstudiante.nombre} ${matriculaCompleta.idEstudiante.apellido} - S/ ${matriculaCompleta.costoMatricula}`);
         } else {
-          console.log('ℹ️ No se registró en caja simple: matrícula sin costo o costo = 0');
+          throw new BadRequestException(' No se registró en caja simple: matrícula sin costo o costo = 0');
         }
       } catch (error) {
         // Manejo especial para errores de foreign key
         if (error.code === '23503' && error.detail?.includes('registrado_por')) {
-          console.error('❌ Error de foreign key en registrado_por:', error.detail);
           throw new BadRequestException(
             'El ID del trabajador proporcionado no existe en el sistema. ' +
             'Verifique que el trabajador esté registrado correctamente.'
@@ -485,7 +425,7 @@ export class MatriculaService {
       relations: [
         'idEstudiante',
         'idEstudiante.idUsuario',
-        'idEstudiante.contactosEmergencia', // Nueva relación
+        'idEstudiante.contactosEmergencia',
         'idApoderado',
         'idGrado',
         'idGrado.idPension',
@@ -544,7 +484,7 @@ export class MatriculaService {
     });
   }
 
-  // === MÉTODO PARA OBTENER ESTUDIANTES CON PADRE Y MADRE ===
+  //MÉTODO PARA OBTENER ESTUDIANTES CON PADRE Y MADRE
   async findEstudiantesConPadres(): Promise<any[]> {
     return await this.matriculaRepository
       .createQueryBuilder('matricula')
@@ -564,7 +504,7 @@ export class MatriculaService {
       .getMany();
   }
 
-  // === MÉTODO PARA OBTENER SOLO CONTACTO PRINCIPAL ===
+  // MÉTODO PARA OBTENER SOLO CONTACTO PRINCIPAL
   async findEstudiantesConContactoPrincipal(): Promise<any[]> {
     return await this.matriculaRepository
       .createQueryBuilder('matricula')
@@ -581,7 +521,7 @@ export class MatriculaService {
       .getMany();
   }
 
-  // === MÉTODO PARA OBTENER SOLO APODERADOS PRINCIPALES ===
+  // MÉTODO PARA OBTENER SOLO APODERADOS PRINCIPALES ===
   async findEstudiantesConApoderadosPrincipales(): Promise<any[]> {
     return await this.matriculaRepository
       .createQueryBuilder('matricula')
@@ -608,7 +548,7 @@ export class MatriculaService {
         'idApoderado',
         'idEstudiante',
         'idEstudiante.idUsuario',
-        'idEstudiante.contactosEmergencia', // Nueva relación
+        'idEstudiante.contactosEmergencia',
         'idGrado',
         'idGrado.idPension',
         'matriculaAula',
@@ -642,7 +582,6 @@ export class MatriculaService {
       sortOrder = 'DESC',
     } = searchDto;
 
-    // Crear el query builder con las relaciones necesarias
     let queryBuilder: SelectQueryBuilder<Matricula> = this.matriculaRepository
       .createQueryBuilder('matricula')
       .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
@@ -653,7 +592,6 @@ export class MatriculaService {
       .leftJoinAndSelect('matricula.matriculaAula', 'matriculaAula')
       .leftJoinAndSelect('matriculaAula.aula', 'aula');
 
-    // === FILTROS POR FECHAS ===
     if (fechaIngresoDesde) {
       queryBuilder = queryBuilder.andWhere(
         'matricula.fechaIngreso >= :fechaDesde',
@@ -672,7 +610,6 @@ export class MatriculaService {
       );
     }
 
-    // === FILTROS POR IDs ===
     if (idGrado) {
       queryBuilder = queryBuilder.andWhere('matricula.idGrado = :idGrado', {
         idGrado,
@@ -693,7 +630,6 @@ export class MatriculaService {
       );
     }
 
-    // === FILTROS POR DNI ===
     if (dniEstudiante) {
       queryBuilder = queryBuilder.andWhere(
         'estudiante.nroDocumento = :dniEstudiante',
@@ -708,7 +644,6 @@ export class MatriculaService {
       );
     }
 
-    // === FILTROS POR DATOS DE MATRÍCULA ===
     if (metodoPago) {
       queryBuilder = queryBuilder.andWhere(
         'matricula.metodoPago = :metodoPago',
@@ -730,7 +665,6 @@ export class MatriculaService {
       );
     }
 
-    // === FILTROS POR NOMBRES (BÚSQUEDA PARCIAL) ===
     if (nombreEstudiante) {
       queryBuilder = queryBuilder.andWhere(
         'LOWER(estudiante.nombre) LIKE LOWER(:nombreEstudiante)',
@@ -758,7 +692,6 @@ export class MatriculaService {
       );
     }
 
-    // === ORDENAMIENTO ===
     switch (sortBy) {
       case 'fechaIngreso':
         queryBuilder = queryBuilder.orderBy(
@@ -782,14 +715,11 @@ export class MatriculaService {
         queryBuilder = queryBuilder.orderBy('matricula.fechaIngreso', 'DESC');
     }
 
-    // === PAGINACIÓN ===
     const skip = (page - 1) * limit;
     queryBuilder = queryBuilder.skip(skip).take(limit);
 
-    // === EJECUTAR CONSULTA ===
     const [matriculas, total] = await queryBuilder.getManyAndCount();
 
-    // === RESPUESTA CON METADATOS ===
     return {
       data: matriculas,
       pagination: {
@@ -807,7 +737,6 @@ export class MatriculaService {
     };
   }
 
-  // === MÉTODOS AUXILIARES ===
   private getAppliedFilters(searchDto: SearchMatriculaDto): string[] {
     const appliedFilters: string[] = [];
 
@@ -831,7 +760,7 @@ export class MatriculaService {
     return this.getAppliedFilters(searchDto).length;
   }
 
-  // === MÉTODO PARA BÚSQUEDA RÁPIDA ===
+  // MÉTODO PARA BÚSQUEDA RÁPIDA
   async quickSearch(term: string, limit: number = 5) {
     return await this.matriculaRepository
       .createQueryBuilder('matricula')
@@ -857,7 +786,7 @@ export class MatriculaService {
       .take(limit)
       .getMany();
   }
-  // === MÉTODO PARA VERIFICAR SI UN ESTUDIANTE YA ESTÁ MATRICULADO EN UN AÑO ===
+  //MÉTODO PARA VERIFICAR SI UN ESTUDIANTE YA ESTÁ MATRICULADO EN UN AÑO
   async verificarMatriculaExistente(
     idEstudiante: string,
     anioEscolar?: string,
@@ -896,7 +825,7 @@ export class MatriculaService {
     return { existeMatricula: false };
   }
 
-  // === MÉTODO PARA OBTENER MATRÍCULAS POR AÑO ESCOLAR ===
+  // MÉTODO PARA OBTENER MATRÍCULAS POR AÑO ESCOLAR 
   async findMatriculasPorAnio(anioEscolar: string): Promise<Matricula[]> {
     return await this.matriculaRepository.find({
       where: { anioEscolar },
@@ -941,9 +870,7 @@ export class MatriculaService {
       .getMany();
   }
 
-  /**
-   * Registrar matrícula existente en caja simple (para matrículas ya creadas)
-   */
+
   async registrarMatriculaEnCajaSimple(
     idMatricula: string,
     registradoPor: string,
@@ -983,7 +910,6 @@ export class MatriculaService {
         periodoEscolar: new Date(matricula.fechaIngreso).getFullYear().toString()
       };
 
-      // Registrar el movimiento en caja simple
       const movimientoCaja = await this.cajaSimpleService.crearIngresoPorMatricula(registroCajaDto);
 
       return {
@@ -1003,16 +929,11 @@ export class MatriculaService {
         }
       };
     } catch (error) {
-      console.error('Error al registrar matrícula en caja simple:', error);
       throw new BadRequestException(`No se pudo registrar la matrícula en caja simple: ${error.message}`);
     }
   }
 
-  /**
-   * Obtener matrículas que no han sido registradas en caja simple
-   */
   async getMatriculasSinRegistroEnCaja(): Promise<any[]> {
-    // Esta consulta busca matrículas que tienen costo pero no tienen registro en caja simple
     const matriculas = await this.matriculaRepository
       .createQueryBuilder('matricula')
       .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
@@ -1021,7 +942,7 @@ export class MatriculaService {
         'caja.id_estudiante = matricula.id_estudiante AND caja.categoria = :categoria',
         { categoria: 'MATRICULA' })
       .where('matricula.costoMatricula > :costo', { costo: 0 })
-      .andWhere('caja.id_movimiento IS NULL') // No existe registro en caja simple
+      .andWhere('caja.id_movimiento IS NULL')
       .select([
         'matricula.idMatricula',
         'matricula.costoMatricula',
@@ -1045,6 +966,99 @@ export class MatriculaService {
       metodoPago: m.metodoPago,
       tieneVoucher: !!m.voucherImg
     }));
+  }
+
+  async actualizarDatosContacto(idMatricula: string, updateData: ActualizarContactosMatriculaDto) {
+    return await this.dataSource.transaction(async (manager) => {
+
+      // 1. Buscar matrícula con relaciones
+      const matricula = await this.findOne(idMatricula);
+      if (!matricula) {
+        throw new NotFoundException('Matrícula no encontrada');
+      }
+
+      // 2. Actualizar datos del apoderado (solo campos permitidos: numero, direccion, correo)
+      if (updateData.apoderadoData) {
+        const updateApoderadoData: any = {};
+
+        // Solo permitir actualizar estos campos específicos
+        if (updateData.apoderadoData.numero !== undefined) {
+          updateApoderadoData.numero = updateData.apoderadoData.numero;
+        }
+        if (updateData.apoderadoData.direccion !== undefined) {
+          updateApoderadoData.direccion = updateData.apoderadoData.direccion;
+        }
+        if (updateData.apoderadoData.correo !== undefined) {
+          updateApoderadoData.correo = updateData.apoderadoData.correo;
+        }
+
+        // Actualizar solo si hay campos válidos para actualizar
+        if (Object.keys(updateApoderadoData).length > 0) {
+          await manager.query(
+            `UPDATE apoderado SET 
+             numero = COALESCE($1, numero),
+             direccion = COALESCE($2, direccion), 
+             correo = COALESCE($3, correo)
+             WHERE id_apoderado = $4`,
+            [
+              updateApoderadoData.numero || null,
+              updateApoderadoData.direccion || null,
+              updateApoderadoData.correo || null,
+              matricula.idApoderado.idApoderado
+            ]
+          );
+
+          console.log(`✅ Apoderado actualizado: ${matricula.idApoderado.idApoderado}`);
+        }
+      }
+
+      // 3. Gestionar contactos de emergencia existentes
+      if (updateData.contactosEmergencia) {
+        for (const contacto of updateData.contactosEmergencia) {
+          if (contacto.idContactoEmergencia) {
+            if (contacto.desactivar) {
+              // Desactivar contacto (eliminado lógico)
+              await manager.update(ContactoEmergencia, contacto.idContactoEmergencia, {
+                estaActivo: false
+              });
+              console.log(`❌ Contacto desactivado: ${contacto.idContactoEmergencia}`);
+            } else {
+              // Actualizar contacto existente
+              const { idContactoEmergencia, desactivar, ...datosContacto } = contacto;
+              await manager.update(ContactoEmergencia, idContactoEmergencia, {
+                ...datosContacto,
+                idEstudiante: matricula.idEstudiante
+              });
+              console.log(`📝 Contacto actualizado: ${idContactoEmergencia}`);
+            }
+          } else {
+            console.log('⚠️ Se intentó actualizar un contacto sin ID, ignorando...');
+          }
+        }
+      }
+
+      // 4. Crear nuevos contactos de emergencia
+      if (updateData.nuevosContactos) {
+        for (const nuevoContacto of updateData.nuevosContactos) {
+          const contacto = new ContactoEmergencia();
+          contacto.nombre = nuevoContacto.nombre;
+          contacto.apellido = nuevoContacto.apellido;
+          contacto.telefono = nuevoContacto.telefono;
+          contacto.email = nuevoContacto.email || null;
+          contacto.tipoContacto = nuevoContacto.tipoContacto;
+          contacto.relacionEstudiante = nuevoContacto.relacionEstudiante || nuevoContacto.tipoContacto;
+          contacto.esPrincipal = nuevoContacto.esPrincipal || false;
+          contacto.prioridad = nuevoContacto.prioridad || 1;
+          contacto.idEstudiante = matricula.idEstudiante;
+
+          const contactoGuardado = await manager.save(ContactoEmergencia, contacto);
+          console.log(`➕ Nuevo contacto creado: ${contactoGuardado.idContactoEmergencia}`);
+        }
+      }
+
+      // 5. Retornar matrícula actualizada con todos los datos
+      return await this.findOne(idMatricula);
+    });
   }
 
 }

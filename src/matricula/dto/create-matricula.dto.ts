@@ -201,6 +201,151 @@ class CreateEstudianteDataDto {
   imagen_estudiante?: string;
 }
 
+// DTO para actualizar datos del apoderado
+class ActualizarApoderadoDataDto {
+  @ApiProperty({
+    example: '+51987654321',
+    description: 'Número de teléfono del apoderado',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(0, 20)
+  numero?: string;
+
+  @ApiProperty({
+    example: 'Av. Siempre Viva 123',
+    description: 'Dirección del apoderado',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  direccion?: string;
+
+  @ApiProperty({
+    example: 'apoderado@email.com',
+    description: 'Correo electrónico del apoderado',
+    required: false,
+  })
+  @IsOptional()
+  @IsEmail()
+  @Length(0, 255)
+  correo?: string;
+}
+
+// DTO para actualizar contactos de emergencia existentes
+class ActualizarContactoEmergenciaDto {
+  @ApiProperty({
+    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    description: 'ID del contacto existente para actualizar',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID()
+  idContactoEmergencia?: string;
+
+  @ApiProperty({ example: 'María', description: 'Nombre del contacto' })
+  @IsString()
+  @Length(1, 100)
+  nombre: string;
+
+  @ApiProperty({ example: 'González', description: 'Apellido del contacto' })
+  @IsString()
+  @Length(1, 100)
+  apellido: string;
+
+  @ApiProperty({
+    example: '+51987654321',
+    description: 'Teléfono del contacto',
+  })
+  @IsString()
+  @Length(1, 20)
+  telefono: string;
+
+  @ApiProperty({
+    example: 'maria@email.com',
+    description: 'Email del contacto',
+    required: false,
+  })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiProperty({ example: 'madre', description: 'Tipo de contacto' })
+  @IsString()
+  @Length(1, 50)
+  tipoContacto: string;
+
+  @ApiProperty({
+    example: 'madre',
+    description: 'Relación específica con el estudiante',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 50)
+  relacionEstudiante?: string;
+
+  @ApiProperty({
+    example: true,
+    description: 'Es contacto principal?',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  esPrincipal?: boolean;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Prioridad de contacto',
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  prioridad?: number;
+
+  @ApiProperty({
+    example: false,
+    description: 'Flag para indicar si desactivar el contacto',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  desactivar?: boolean;
+}
+
+export class ActualizarContactosMatriculaDto {
+  @ApiProperty({
+    description: 'Datos del apoderado para actualizar',
+    required: false,
+    type: ActualizarApoderadoDataDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ActualizarApoderadoDataDto)
+  apoderadoData?: ActualizarApoderadoDataDto;
+
+  @ApiProperty({
+    description: 'Lista de contactos de emergencia para actualizar',
+    required: false,
+    type: [ActualizarContactoEmergenciaDto],
+  })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => ActualizarContactoEmergenciaDto)
+  contactosEmergencia?: ActualizarContactoEmergenciaDto[];
+
+  @ApiProperty({
+    description: 'Lista de nuevos contactos de emergencia para crear',
+    required: false,
+    type: [CreateContactoEmergenciaDataDto],
+  })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CreateContactoEmergenciaDataDto)
+  nuevosContactos?: CreateContactoEmergenciaDataDto[];
+}
+
 export class CreateMatriculaDto {
   @ApiProperty({
     description: 'Costo de la matrícula del estudiante',
@@ -311,24 +456,24 @@ export class CreateMatriculaDto {
   @IsUUID()
   idAulaEspecifica?: string;
 
-    @ApiProperty({
-        description: 'Motivo de la preferencia de aula (opcional, para registro administrativo)',
-        example: 'Hermano en la misma sección',
-        required: false
-    })
-    @IsOptional()
-    @IsString()
-    motivoPreferencia?: string;
+  @ApiProperty({
+    description: 'Motivo de la preferencia de aula (opcional, para registro administrativo)',
+    example: 'Hermano en la misma sección',
+    required: false
+  })
+  @IsOptional()
+  @IsString()
+  motivoPreferencia?: string;
 
-    @ApiProperty({
-        description: 'ID del trabajador que registra la matrícula (requerido para registro en caja simple)',
-        example: 'f1a2b3c4-d5e6-7890-abcd-ef1234567890',
-        format: 'uuid',
-        required: false
-    })
-    @IsOptional()
-    @IsUUID()
-    registradoPor?: string;
+  @ApiProperty({
+    description: 'ID del trabajador que registra la matrícula (requerido para registro en caja simple)',
+    example: 'f1a2b3c4-d5e6-7890-abcd-ef1234567890',
+    format: 'uuid',
+    required: false
+  })
+  @IsOptional()
+  @IsUUID()
+  registradoPor?: string;
   @ApiProperty({
     description:
       'Tipo de asignación de aula: "automatica" (recomendado) o "manual" (el usuario elige)',
