@@ -1012,6 +1012,36 @@ export class MatriculaService {
         }
       }
 
+      // 2.1. Actualizar datos del estudiante (solo nombre y apellido)
+      if (updateData.estudianteData) {
+        const updateEstudianteData: any = {};
+
+        // Solo permitir actualizar nombre y apellido
+        if (updateData.estudianteData.nombre !== undefined) {
+          updateEstudianteData.nombre = updateData.estudianteData.nombre;
+        }
+        if (updateData.estudianteData.apellido !== undefined) {
+          updateEstudianteData.apellido = updateData.estudianteData.apellido;
+        }
+
+        // Actualizar solo si hay campos válidos para actualizar
+        if (Object.keys(updateEstudianteData).length > 0) {
+          await manager.query(
+            `UPDATE estudiante SET 
+             nombre = COALESCE($1, nombre),
+             apellido = COALESCE($2, apellido)
+             WHERE id_estudiante = $3`,
+            [
+              updateEstudianteData.nombre || null,
+              updateEstudianteData.apellido || null,
+              matricula.idEstudiante.idEstudiante
+            ]
+          );
+
+          console.log(`✅ Estudiante actualizado: ${matricula.idEstudiante.idEstudiante}`);
+        }
+      }
+
       // 3. Gestionar contactos de emergencia existentes
       if (updateData.contactosEmergencia) {
         for (const contacto of updateData.contactosEmergencia) {

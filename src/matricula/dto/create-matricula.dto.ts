@@ -314,6 +314,29 @@ class ActualizarContactoEmergenciaDto {
   desactivar?: boolean;
 }
 
+// DTO para actualizar datos del estudiante (solo nombre y apellido)
+class ActualizarEstudianteDataDto {
+  @ApiProperty({
+    example: 'Carlos',
+    description: 'Nombre del estudiante',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  nombre?: string;
+
+  @ApiProperty({
+    example: 'Rodríguez',
+    description: 'Apellido del estudiante',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  apellido?: string;
+}
+
 export class ActualizarContactosMatriculaDto {
   @ApiProperty({
     description: 'Datos del apoderado para actualizar',
@@ -324,6 +347,16 @@ export class ActualizarContactosMatriculaDto {
   @ValidateNested()
   @Type(() => ActualizarApoderadoDataDto)
   apoderadoData?: ActualizarApoderadoDataDto;
+
+  @ApiProperty({
+    description: 'Datos del estudiante para actualizar (solo nombre y apellido)',
+    required: false,
+    type: ActualizarEstudianteDataDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ActualizarEstudianteDataDto)
+  estudianteData?: ActualizarEstudianteDataDto;
 
   @ApiProperty({
     description: 'Lista de contactos de emergencia para actualizar',
