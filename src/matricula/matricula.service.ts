@@ -386,8 +386,6 @@ export class MatriculaService {
             if (trabajadorExiste && trabajadorExiste.length > 0) {
               registradoPorValido = createMatriculaDto.registradoPor;
 
-            } else {
-              console.log(`Trabajador no encontrado (${createMatriculaDto.registradoPor}), usando ID por defecto ${registradoPorValido}`);
             }
           }
 
@@ -1010,7 +1008,6 @@ export class MatriculaService {
             ]
           );
 
-          console.log(`✅ Apoderado actualizado: ${matricula.idApoderado.idApoderado}`);
         }
       }
 
@@ -1040,7 +1037,6 @@ export class MatriculaService {
             ]
           );
 
-          console.log(`✅ Estudiante actualizado: ${matricula.idEstudiante.idEstudiante}`);
         }
       }
 
@@ -1053,7 +1049,6 @@ export class MatriculaService {
               await manager.update(ContactoEmergencia, contacto.idContactoEmergencia, {
                 estaActivo: false
               });
-              console.log(`❌ Contacto desactivado: ${contacto.idContactoEmergencia}`);
             } else {
               // Actualizar contacto existente
               const { idContactoEmergencia, desactivar, ...datosContacto } = contacto;
@@ -1061,7 +1056,6 @@ export class MatriculaService {
                 ...datosContacto,
                 idEstudiante: matricula.idEstudiante
               });
-              console.log(`📝 Contacto actualizado: ${idContactoEmergencia}`);
             }
           } else {
             console.log('⚠️ Se intentó actualizar un contacto sin ID, ignorando...');
@@ -1084,7 +1078,6 @@ export class MatriculaService {
           contacto.idEstudiante = matricula.idEstudiante;
 
           const contactoGuardado = await manager.save(ContactoEmergencia, contacto);
-          console.log(`➕ Nuevo contacto creado: ${contactoGuardado.idContactoEmergencia}`);
         }
       }
 
@@ -1123,7 +1116,6 @@ export class MatriculaService {
           });
           //ELIMINAR APODERADO
           await manager.delete(Apoderado, { idApoderado: apoderado?.idApoderado });
-          console.log(`🗑️ Apoderado eliminado: ${apoderado?.idApoderado}`);
 
           //Buscamos estudiante en base a la matricula que se identifico
           const estudiante = await manager.findOne(Estudiante, {
@@ -1187,11 +1179,9 @@ export class MatriculaService {
 
           //ELIMINAR MATRÍCULA
           await manager.delete(Matricula, { idMatricula });
-          console.log(`🗑️ Matrícula eliminada: ${idMatricula}`);
 
           // ELIMINAR ESTUDIANTE
           await manager.delete(Estudiante, { idEstudiante: estudiante?.idEstudiante });
-          console.log(`🗑️ Estudiante eliminado: ${estudiante?.idEstudiante}`);
 
         }
       });

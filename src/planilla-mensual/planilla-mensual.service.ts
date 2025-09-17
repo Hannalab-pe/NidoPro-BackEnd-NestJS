@@ -155,7 +155,6 @@ export class PlanillaMensualService {
       }
 
       // 3. Obtener información de los trabajadores
-      console.log('🔍 Validando trabajadores:', data.trabajadores);
       const trabajadores = await this.trabajadorService.findByIds(
         data.trabajadores,
       );
@@ -167,7 +166,6 @@ export class PlanillaMensualService {
       }
 
       // 4. Crear la planilla principal usando la transacción
-      console.log('📋 Creando planilla principal...');
       const planilla = queryRunner.manager.create(PlanillaMensual, {
         mes: data.mes,
         anio: data.anio,
@@ -184,15 +182,12 @@ export class PlanillaMensualService {
       });
 
       const planillaGuardada = await queryRunner.manager.save(PlanillaMensual, planilla);
-      console.log('✅ Planilla creada con ID:', planillaGuardada.idPlanillaMensual);
 
       // 5. Crear detalles de planilla para cada trabajador
-      console.log('👥 Procesando trabajadores...');
       const detallesCreados: DetallePlanilla[] = [];
 
       for (const trabajador of trabajadores) {
         try {
-          console.log(`🔄 Procesando trabajador: ${trabajador.nombre} ${trabajador.apellido}`);
 
           // Obtener el sueldo vigente del trabajador
           const sueldoData = await this.sueldoTrabajadorService.obtenerSueldoVigenteTrabajador(
@@ -205,7 +200,6 @@ export class PlanillaMensualService {
             );
           }
 
-          console.log(`💰 Sueldo encontrado para ${trabajador.nombre}: ${sueldoData.sueldoBase}`);
 
           // Crear detalle usando el servicio correspondiente (sin guardarlo aún)
           const detalleNuevo = this.detallePlanillaService.crearDetalleTrabajadorSinGuardar(
@@ -217,9 +211,7 @@ export class PlanillaMensualService {
           const detalleGuardado = await queryRunner.manager.save(DetallePlanilla, detalleNuevo);
           detallesCreados.push(detalleGuardado);
 
-          console.log(`✅ Detalle creado para ${trabajador.nombre}: ID ${detalleGuardado.idDetallePlanilla}`);
         } catch (error) {
-          console.error(`❌ Error procesando trabajador ${trabajador.nombre}:`, error.message);
           throw new BadRequestException(
             `Error procesando trabajador ${trabajador.nombre} ${trabajador.apellido}: ${error.message}`
           );
@@ -227,14 +219,12 @@ export class PlanillaMensualService {
       }
 
       // 6. Actualizar totales de la planilla
-      console.log('🔢 Recalculando totales...');
       await this.recalcularTotalesPlanilla(
         planillaGuardada.idPlanillaMensual,
         queryRunner,
       );
 
       await queryRunner.commitTransaction();
-      console.log('✅ Transacción completada exitosamente');
 
       // 7. Obtener la planilla completa para devolver
       const planillaCompleta = await this.findOne(planillaGuardada.idPlanillaMensual);
@@ -246,7 +236,6 @@ export class PlanillaMensualService {
         detallesCreados,
       };
     } catch (error) {
-      console.error('❌ Error en generarPlanillaConTrabajadores:', error);
       await queryRunner.rollbackTransaction();
 
       // Re-lanzar con más información
@@ -788,7 +777,6 @@ export class PlanillaMensualService {
       }
 
       // 2. Validar que los trabajadores existen
-      console.log('🔍 Validando trabajadores:', updateDto.trabajadores);
       const trabajadores = await this.trabajadorService.findByIds(updateDto.trabajadores ?? []);
 
       if (trabajadores.length !== updateDto.trabajadores?.length) {
@@ -810,14 +798,11 @@ export class PlanillaMensualService {
         throw new BadRequestException('Todos los trabajadores proporcionados ya están en la planilla');
       }
 
-      console.log(`📝 Agregando ${trabajadoresNuevos.length} trabajadores nuevos a la planilla`);
-
       // 4. Crear detalles para trabajadores nuevos
       const detallesCreados: DetallePlanilla[] = [];
 
       for (const trabajador of trabajadoresNuevos) {
         try {
-          console.log(`🔄 Procesando trabajador nuevo: ${trabajador.nombre} ${trabajador.apellido}`);
 
           // Obtener el sueldo vigente del trabajador
           const sueldoData = await this.sueldoTrabajadorService.obtenerSueldoVigenteTrabajador(
@@ -830,7 +815,6 @@ export class PlanillaMensualService {
             );
           }
 
-          console.log(`💰 Sueldo encontrado para ${trabajador.nombre}: ${sueldoData.sueldoBase}`);
 
           // Crear detalle usando el servicio correspondiente (sin guardarlo aún)
           const detalleNuevo = this.detallePlanillaService.crearDetalleTrabajadorSinGuardar(
@@ -842,9 +826,7 @@ export class PlanillaMensualService {
           const detalleGuardado = await queryRunner.manager.save(DetallePlanilla, detalleNuevo);
           detallesCreados.push(detalleGuardado);
 
-          console.log(`✅ Detalle creado para ${trabajador.nombre}: ID ${detalleGuardado.idDetallePlanilla}`);
         } catch (error) {
-          console.error(`❌ Error procesando trabajador ${trabajador.nombre}:`, error.message);
           throw new BadRequestException(
             `Error procesando trabajador ${trabajador.nombre} ${trabajador.apellido}: ${error.message}`
           );
@@ -852,11 +834,9 @@ export class PlanillaMensualService {
       }
 
       // 5. Recalcular totales de la planilla
-      console.log('🔢 Recalculando totales...');
       await this.recalcularTotalesPlanilla(planilla.idPlanillaMensual, queryRunner);
 
       await queryRunner.commitTransaction();
-      console.log('✅ Transacción completada exitosamente');
 
       // 6. Obtener la planilla completa actualizada
       const planillaActualizada = await this.findOne(id);
@@ -869,7 +849,6 @@ export class PlanillaMensualService {
       };
 
     } catch (error) {
-      console.error('❌ Error en updatePlanillaConTrabajadores:', error);
       await queryRunner.rollbackTransaction();
 
       // Re-lanzar con más información

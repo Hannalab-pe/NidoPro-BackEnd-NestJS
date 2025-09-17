@@ -157,4 +157,12 @@ export class AulaService {
     };
   }
 
+  async findAulasSinAsignacion(): Promise<Aula[]> {
+    return await this.aulaRepository
+      .createQueryBuilder('aula')
+      .leftJoin('aula.asignacionAulas', 'aa')
+      .where('aa.idAsignacionAula IS NULL')
+      .getMany();
+  }
+
 }

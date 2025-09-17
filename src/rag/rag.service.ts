@@ -51,7 +51,6 @@ export class RAGService {
   // src/rag/rag.service.ts - AJUSTE PARA KINDER
   // src/rag/rag.service.ts
     private async getUserContext(userId: string) {
-    console.log('🔍 Buscando estudiante con userId:', userId);
     
     // Intentar con ambas propiedades
     const estudiante1 = await this.estudianteRepository.findOne({
@@ -59,7 +58,6 @@ export class RAGService {
         select: ['idEstudiante', 'nombre', 'apellido']
     });
     
-    console.log('📊 Resultado con id_Usuario:', estudiante1);
     
     // También intentar usando createQueryBuilder para más control
     const estudiante2 = await this.estudianteRepository
@@ -68,12 +66,10 @@ export class RAGService {
         .select(['estudiante.idEstudiante', 'estudiante.nombre', 'estudiante.apellido'])
         .getOne();
         
-    console.log('📊 Resultado con QueryBuilder:', estudiante2);
 
     const estudiante = estudiante1 || estudiante2;
 
     if (!estudiante) {
-        console.log('❌ No se encontró estudiante');
         return {
         userId,
         role: 'no_estudiante',
@@ -83,7 +79,6 @@ export class RAGService {
         };
     }
 
-    console.log('✅ Estudiante encontrado:', estudiante);
     
     return {
         userId,

@@ -22,6 +22,19 @@ export class AulaController {
     };
   }
 
+  @Get('sin-asignacion')
+  @ApiOperation({ summary: 'Obtener todas las aulas sin asignación' })
+  async findAulasSinAsignacion() {
+    const data = await this.aulaService.findAulasSinAsignacion();
+    return {
+      success: true,
+      message: "Aulas sin asignación obtenidas correctamente",
+      info: {
+        data,
+      }
+    };
+  }
+
   @Get()
   @ApiOperation({ summary: 'Obtener todas las aulas' })
   async findAll() {

@@ -41,11 +41,8 @@ export class LibretaBimestralService {
       relations: ['idEvaluacion2', 'idTarea', 'idBimestre2']
     });
 
-    console.log(`Notas encontradas para estudiante ${idEstudiante} en bimestre ${idBimestre}:`, notas.length);
 
     if (notas.length === 0) {
-      // En lugar de lanzar error, crear libreta con valores por defecto
-      console.log('No se encontraron notas. Creando libreta con valores por defecto.');
 
       const libretaDefecto = this.libretaBimestralRepository.create({
         idEstudiante,
@@ -68,7 +65,6 @@ export class LibretaBimestralService {
     const notasEvaluaciones = notas.filter(nota => nota.idEvaluacion2 !== null);
     const notasTareas = notas.filter(nota => nota.idTarea !== null);
 
-    console.log(`Notas de evaluaciones: ${notasEvaluaciones.length}, Notas de tareas: ${notasTareas.length}`);
 
     // Calcular promedios
     const promedioEvaluaciones = this.calcularPromedioCalificaciones(notasEvaluaciones);
@@ -80,7 +76,6 @@ export class LibretaBimestralService {
     // Convertir promedio final a calificación literal
     const calificacionFinal = CalificacionKinderHelper.numeroACalificacion(promedioFinal);
 
-    console.log(`Promedios calculados - Evaluaciones: ${promedioEvaluaciones}, Tareas: ${promedioTareas}, Final: ${promedioFinal}, Calificación: ${calificacionFinal}`);
 
     // Crear la libreta bimestral
     const nuevaLibreta = this.libretaBimestralRepository.create({
@@ -219,7 +214,6 @@ export class LibretaBimestralService {
       relations: ['idEvaluacion2', 'idTarea', 'idBimestre2']
     });
 
-    console.log(`Recalculando libreta - Notas encontradas: ${notas.length}`);
 
     // Si no hay notas, mantener valores mínimos
     if (notas.length === 0) {

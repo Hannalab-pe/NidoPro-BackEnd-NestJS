@@ -398,8 +398,7 @@ export class BimestreService {
     try {
       await this.activarBimestreAutomatico();
     } catch (error) {
-      // Silenciar errores para no interrumpir otras operaciones
-      console.warn('Error al activar bimestre automáticamente:', error.message);
+      throw new BadRequestException('Error al verificar y activar bimestre automáticamente: ' + error.message);
     }
   }
 

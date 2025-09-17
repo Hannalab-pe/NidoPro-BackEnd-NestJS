@@ -51,7 +51,6 @@ export class PensionEstudianteService {
     // PASO 1: Usar transacción para garantizar consistencia
     return await this.pensionRepository.manager.transaction(async manager => {
       try {
-        console.log(`🚀 Iniciando generación optimizada para año ${anioEscolar}`);
 
         // PASO 2: Verificaciones previas (igual que antes)
         const verificacion = await this.verificarConfiguracionParaGeneracion(anioEscolar);
@@ -74,13 +73,10 @@ export class PensionEstudianteService {
           throw new BadRequestException(`Trabajador con ID ${registradoPorId} no encontrado.`);
         }
 
-        console.log(`📊 Procesando ${estudiantesMatriculados.length} estudiantes × ${mesesEscolares.length} meses = ${estudiantesMatriculados.length * mesesEscolares.length} pensiones potenciales`);
 
         // PASO 3: OPTIMIZACIÓN - Obtener todas las pensiones existentes de una vez
         const estudianteIds = estudiantesMatriculados.map(m => m.idEstudiante.idEstudiante);
 
-        console.log(`📋 IDs de estudiantes a verificar:`, estudianteIds.slice(0, 3), '...');
-        console.log(`📅 Meses a verificar:`, mesesEscolares);
 
         // Obtener pensiones existentes de manera más robusta
         const pensionesExistentesEnBD = await manager
@@ -90,18 +86,7 @@ export class PensionEstudianteService {
           .andWhere('pension.mes IN (:...meses)', { meses: mesesEscolares })
           .getMany();
 
-        console.log(`🔍 Encontradas ${pensionesExistentesEnBD.length} pensiones existentes en BD`);
 
-        // DEBUG: Mostrar algunos IDs para verificar
-        if (pensionesExistentesEnBD.length > 0) {
-          console.log(`📋 Ejemplo de pensiones existentes:`,
-            pensionesExistentesEnBD.slice(0, 3).map(p => ({
-              estudiante: p.idEstudiante,
-              mes: p.mes,
-              anio: p.anio
-            }))
-          );
-        }
 
         // PASO 4: Crear un Map para búsqueda rápida O(1) en lugar de O(n)
         const pensionesExistentesMap = new Map<string, PensionEstudiante>();
@@ -183,43 +168,36 @@ export class PensionEstudianteService {
           }
         }
 
-        console.log(`📋 Preparado: ${pensionesParaCrear.length} para crear, ${pensionesParaActualizar.length} para actualizar`);
 
         // PASO 7: VALIDACIÓN ADICIONAL - Verificar duplicados en el array a crear
         const clavesUnicas = new Set<string>();
         const pensionesParaCrearFiltradas = pensionesParaCrear.filter(pension => {
           const clave = `${pension.idEstudiante}-${pension.mes}-${pension.anio}`;
           if (clavesUnicas.has(clave)) {
-            console.log(`⚠️ Duplicado detectado en array: ${clave}`);
             return false;
           }
           clavesUnicas.add(clave);
           return true;
         });
 
-        console.log(`🔍 Después de filtrar duplicados: ${pensionesParaCrearFiltradas.length} pensiones a crear`);
 
         // PASO 8: BULK OPERATIONS - Mucho más rápido
         let pensionesCreadas: PensionEstudiante[] = [];
 
         // Crear pensiones en lotes
         if (pensionesParaCrearFiltradas.length > 0) {
-          console.log(`⚡ Creando ${pensionesParaCrearFiltradas.length} pensiones en bulk...`);
 
           try {
             pensionesCreadas = await manager.save(PensionEstudiante, pensionesParaCrearFiltradas);
-            console.log(`✅ Pensiones creadas exitosamente`);
           } catch (saveError) {
-            console.error(`❌ Error en bulk save:`, saveError.message);
 
             // Fallback: crear una por una para identificar duplicados específicos
-            console.log(`🔄 Intentando crear pensiones una por una...`);
             for (const pension of pensionesParaCrearFiltradas) {
               try {
                 const pensionCreada = await manager.save(PensionEstudiante, pension);
                 pensionesCreadas.push(pensionCreada);
               } catch (individualError) {
-                console.log(`⚠️ No se pudo crear pensión para estudiante ${pension.idEstudiante}, mes ${pension.mes}: ${individualError.message}`);
+                throw new BadRequestException(`⚠️ No se pudo crear pensión para estudiante ${pension.idEstudiante}, mes ${pension.mes}: ${individualError.message}`);
               }
             }
           }
@@ -227,14 +205,11 @@ export class PensionEstudianteService {
 
         // Actualizar pensiones en lotes
         if (pensionesParaActualizar.length > 0) {
-          console.log(`⚡ Actualizando ${pensionesParaActualizar.length} pensiones...`);
           for (const { pension, nuevosDatos } of pensionesParaActualizar) {
             await manager.update(PensionEstudiante, pension.idPensionEstudiante, nuevosDatos);
           }
-          console.log(`✅ Pensiones actualizadas exitosamente`);
         }
 
-        console.log(`🎉 Proceso completado exitosamente`);
 
         // PASO 8: Retornar resultado optimizado
         return {
@@ -267,7 +242,6 @@ export class PensionEstudianteService {
         };
 
       } catch (error) {
-        console.error(`❌ Error en generación optimizada:`, error);
         throw new BadRequestException(`Error al generar pensiones (optimizado): ${error.message}`);
       }
     });
@@ -687,7 +661,6 @@ export class PensionEstudianteService {
 
     pension.actualizadoEn = new Date();
 
-    // 🔥 NUEVO: Cuando se APRUEBA el pago (pasa a PAGADO), crear automáticamente el ingreso en Caja Simple
     if (verifyData.estadoPension === 'PAGADO' && estadoAnterior !== 'PAGADO') {
       // Validar que el verificadoPorId sea un UUID válido antes de crear ingreso automático
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -705,18 +678,15 @@ export class PensionEstudianteService {
             observaciones: `INGRESO AUTOMÁTICO - Pago aprobado: ${pension.observaciones || 'Sin observaciones'}`
           });
 
-          console.log(`💰 INGRESO AUTOMÁTICO CREADO - Pensión ${pensionId} → Caja Simple`);
 
           // Actualizar observaciones para indicar que se creó el ingreso
           pension.observaciones = `${pension.observaciones} | ✅ INGRESO REGISTRADO EN CAJA SIMPLE`;
 
         } catch (error) {
-          console.error(`❌ Error al crear ingreso automático para pensión ${pensionId}:`, error.message);
           // No fallar la verificación por esto, solo registrar el error
           pension.observaciones = `${pension.observaciones} | ⚠️ ERROR AL REGISTRAR EN CAJA SIMPLE: ${error.message}`;
         }
       } else {
-        console.warn(`⚠️ Ingreso automático omitido para pensión ${pensionId}: ID de verificador no válido (${verificadoPorId})`);
         pension.observaciones = `${pension.observaciones} | ⚠️ INGRESO AUTOMÁTICO OMITIDO: ID verificador no válido`;
       }
     }
@@ -795,11 +765,9 @@ export class PensionEstudianteService {
 
                 pension.observaciones = `${pension.observaciones} | ✅ INGRESO REGISTRADO EN CAJA SIMPLE`;
               } catch (error) {
-                console.error(`❌ Error en ingreso automático para pensión ${pension.idPensionEstudiante}:`, error.message);
                 pension.observaciones = `${pension.observaciones} | ⚠️ ERROR AL REGISTRAR EN CAJA SIMPLE: ${error.message}`;
               }
             } else {
-              console.warn(`⚠️ Ingreso automático omitido para pensión ${pension.idPensionEstudiante}: ID de verificador no válido (${verificadoPorId})`);
               pension.observaciones = `${pension.observaciones} | ⚠️ INGRESO AUTOMÁTICO OMITIDO: ID verificador no válido`;
             }
           }
@@ -866,7 +834,6 @@ export class PensionEstudianteService {
   // 🔥 NUEVO: PROCESAR INGRESOS MASIVOS DE PENSIONES APROBADAS
   async procesarIngresosMasivosPensiones(mes: number, anio: number, registradoPorId: string) {
     try {
-      console.log(`📊 Iniciando procesamiento masivo de pensiones pagadas - ${mes}/${anio}`);
 
       // Buscar todas las pensiones pagadas del mes que NO tengan ingreso en caja simple
       const pensionesPagadas = await this.pensionRepository
@@ -891,7 +858,6 @@ export class PensionEstudianteService {
         };
       }
 
-      console.log(`📋 Encontradas ${pensionesPagadas.length} pensiones pagadas pendientes de registro`);
 
       const ingresosCreados: any[] = [];
       const errores: any[] = [];
@@ -900,7 +866,6 @@ export class PensionEstudianteService {
       const LOTE_SIZE = 50;
       for (let i = 0; i < pensionesPagadas.length; i += LOTE_SIZE) {
         const lote = pensionesPagadas.slice(i, i + LOTE_SIZE);
-        console.log(`⚡ Procesando lote ${Math.floor(i / LOTE_SIZE) + 1}/${Math.ceil(pensionesPagadas.length / LOTE_SIZE)}`);
 
         for (const pension of lote) {
           try {
@@ -928,7 +893,6 @@ export class PensionEstudianteService {
             });
 
           } catch (error) {
-            console.error(`❌ Error procesando pensión ${pension.idPensionEstudiante}:`, error.message);
             errores.push({
               pensionId: pension.idPensionEstudiante,
               estudianteNombre: `${pension.estudiante?.nombre || ''} ${pension.estudiante?.apellido || ''}`,
@@ -941,7 +905,6 @@ export class PensionEstudianteService {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      console.log(`🎉 Procesamiento masivo completado: ${ingresosCreados.length} éxitos, ${errores.length} errores`);
 
       return {
         success: true,
@@ -964,7 +927,6 @@ export class PensionEstudianteService {
       };
 
     } catch (error) {
-      console.error(`❌ Error en procesamiento masivo:`, error);
       throw new BadRequestException(`Error en procesamiento masivo de pensiones: ${error.message}`);
     }
   }
@@ -972,7 +934,6 @@ export class PensionEstudianteService {
   // 🔥 NUEVO: REPORTE DE CONCILIACIÓN PENSIONES vs CAJA SIMPLE
   async generarReporteConciliacion(mes: number, anio: number) {
     try {
-      console.log(`📊 Generando reporte de conciliación ${mes}/${anio}`);
 
       // Obtener todas las pensiones del mes
       const todasLasPensiones = await this.pensionRepository
