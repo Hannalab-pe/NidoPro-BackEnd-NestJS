@@ -5,7 +5,7 @@ import { CreateEvualuacionDocenteBimestralDto } from './dto/create-evualuacion-d
 import { UpdateEvualuacionDocenteBimestralDto } from './dto/update-evualuacion-docente-bimestral.dto';
 
 @ApiTags('Evaluación Docente Bimestral')
-@ApiBearerAuth()
+//@ApiBearerAuth()
 @Controller('evaluacion-docente-bimestral')
 export class EvualuacionDocenteBimestralController {
   constructor(private readonly evaluacionDocenteBimestralService: EvualuacionDocenteBimestralService) { }
