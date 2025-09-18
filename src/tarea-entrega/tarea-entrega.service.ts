@@ -65,6 +65,7 @@ export class TareaEntregaService {
       // 5. ACTUALIZAR LA ENTREGA
       entregaExistente.fechaEntrega = new Date().toISOString().split('T')[0];
       entregaExistente.archivoUrl = createTareaEntregaDto.archivoUrl || null;
+      entregaExistente.observaciones = createTareaEntregaDto.observaciones || '';
       entregaExistente.estado = estadoFinal;
 
       const entregaActualizada = await manager.save(
