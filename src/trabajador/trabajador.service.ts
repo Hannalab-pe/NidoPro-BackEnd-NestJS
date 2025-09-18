@@ -374,8 +374,10 @@ export class TrabajadorService {
 
   async remove(id: string): Promise<{ message: string }> {
     const trabajador = await this.findOne(id);
-    trabajador.estaActivo = false;
-    await this.trabajadorRepository.update(id, trabajador);
+
+    // Solo actualizar el campo estaActivo, no todo el objeto trabajador
+    await this.trabajadorRepository.update(id, { estaActivo: false });
+
     return {
       message: `Trabajador ${trabajador.nombre} ${trabajador.apellido} desactivado correctamente`,
     };
