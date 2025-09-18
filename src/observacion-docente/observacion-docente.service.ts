@@ -144,13 +144,14 @@ export class ObservacionDocenteService {
 
   // Método para marcar como calificado (llamado desde evaluación docente bimestral)
   async marcarComoCalificado(idTrabajador: string, idBimestre: string): Promise<void> {
-    const observaciones = await this.observacionRepository.find({
-      where: {
-        idTrabajador: { idTrabajador },
-        idBimestre: { idBimestre },
-        estado: EstadoObservacionDocente.APROBADO
-      }
-    });
+    const observaciones = await this.observacionRepository
+      .createQueryBuilder('observacion')
+      .leftJoinAndSelect('observacion.idTrabajador', 'trabajador')
+      .leftJoinAndSelect('observacion.idBimestre', 'bimestre')
+      .where('trabajador.idTrabajador = :idTrabajador', { idTrabajador })
+      .andWhere('bimestre.idBimestre = :idBimestre', { idBimestre })
+      .andWhere('observacion.estado = :estado', { estado: EstadoObservacionDocente.APROBADO })
+      .getMany();
 
     if (observaciones.length > 0) {
       await this.observacionRepository.update(
@@ -174,11 +175,14 @@ export class ObservacionDocenteService {
   }
 
   async findByTrabajador(idTrabajador: string): Promise<{ success: boolean; message: string; observaciones: ObservacionDocente[] }> {
-    const observaciones = await this.observacionRepository.find({
-      where: { idTrabajador: { idTrabajador } },
-      relations: ['idBimestre', 'idCoordinador', 'idTrabajador'],
-      order: { fechaObservacion: 'DESC' }
-    });
+    const observaciones = await this.observacionRepository
+      .createQueryBuilder('observacion')
+      .leftJoinAndSelect('observacion.idBimestre', 'bimestre')
+      .leftJoinAndSelect('observacion.idCoordinador', 'coordinador')
+      .leftJoinAndSelect('observacion.idTrabajador', 'trabajador')
+      .where('trabajador.idTrabajador = :idTrabajador', { idTrabajador })
+      .orderBy('observacion.fechaObservacion', 'DESC')
+      .getMany();
 
     return {
       success: true,
@@ -188,11 +192,14 @@ export class ObservacionDocenteService {
   }
 
   async findByBimestre(idBimestre: string): Promise<{ success: boolean; message: string; observaciones: ObservacionDocente[] }> {
-    const observaciones = await this.observacionRepository.find({
-      where: { idBimestre: { idBimestre } },
-      relations: ['idBimestre', 'idCoordinador', 'idTrabajador'],
-      order: { fechaObservacion: 'DESC' }
-    });
+    const observaciones = await this.observacionRepository
+      .createQueryBuilder('observacion')
+      .leftJoinAndSelect('observacion.idBimestre', 'bimestre')
+      .leftJoinAndSelect('observacion.idCoordinador', 'coordinador')
+      .leftJoinAndSelect('observacion.idTrabajador', 'trabajador')
+      .where('bimestre.idBimestre = :idBimestre', { idBimestre })
+      .orderBy('observacion.fechaObservacion', 'DESC')
+      .getMany();
 
     return {
       success: true,
