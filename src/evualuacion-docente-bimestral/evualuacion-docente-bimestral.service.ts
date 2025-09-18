@@ -7,6 +7,7 @@ import { Bimestre } from '../bimestre/entities/bimestre.entity';
 import { Trabajador } from '../trabajador/entities/trabajador.entity';
 import { Repository } from 'typeorm';
 import { ObservacionDocenteService } from '../observacion-docente/observacion-docente.service';
+import { BimestreService } from 'src/bimestre/bimestre.service';
 
 @Injectable()
 export class EvualuacionDocenteBimestralService {
@@ -14,8 +15,7 @@ export class EvualuacionDocenteBimestralService {
   constructor(
     @InjectRepository(EvaluacionDocenteBimestral)
     private readonly evaluacionRepository: Repository<EvaluacionDocenteBimestral>,
-    @InjectRepository(Bimestre)
-    private readonly bimestreRepository: Repository<Bimestre>,
+    private readonly bimestreRepository: BimestreService,
     @InjectRepository(Trabajador)
     private readonly trabajadorRepository: Repository<Trabajador>,
     private readonly observacionDocenteService: ObservacionDocenteService
@@ -39,15 +39,17 @@ export class EvualuacionDocenteBimestralService {
     }
 
     // Validar que el bimestre existe y está activo
-    const bimestre = await this.bimestreRepository.findOne({
-      where: { idBimestre: createEvaluacionDto.idBimestre }
-    });
+    const bimestre = await this.bimestreRepository.findBimestreActual();
 
     if (!bimestre) {
       throw new NotFoundException('El bimestre especificado no existe');
     }
 
-    if (!bimestre.estaActivo) {
+    if (!bimestre) {
+      throw new NotFoundException('El bimestre especificado no existe');
+    }
+
+    if (!bimestre.bimestre?.estaActivo) {
       throw new BadRequestException('No se pueden crear evaluaciones para un bimestre inactivo');
     }
 
@@ -111,7 +113,7 @@ export class EvualuacionDocenteBimestralService {
       idBimestre: createEvaluacionDto.idBimestre,
       idCoordinador: coordinador,
       idTrabajador2: trabajadorEvaluado,
-      idBimestre2: bimestre
+      idBimestre2: bimestre.bimestre // Pass the full Bimestre object, not just the id
     });
 
     const savedEvaluacion = await this.evaluacionRepository.save(evaluacion);
