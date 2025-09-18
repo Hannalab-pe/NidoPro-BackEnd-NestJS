@@ -34,7 +34,7 @@ export class EvualuacionDocenteBimestralService {
       throw new NotFoundException('Coordinador no encontrado');
     }
 
-    if (coordinador.idRol.nombre !== 'COORDINADOR') {
+    if (coordinador.idRol.nombre !== 'COORDINADOR' && coordinador.idRol.nombre !== 'DIRECTORA') {
       throw new ForbiddenException('Solo los coordinadores pueden crear evaluaciones');
     }
 
