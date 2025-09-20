@@ -1,17 +1,49 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  OnApplicationBootstrap,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
 import { CreateNotificacionDto } from './dto/create-notificacion.dto';
 import { UpdateNotificacionDto } from './dto/update-notificacion.dto';
 import { MarcarLeidoDto } from './dto/marcar-leido.dto';
 import { Notificacion } from './entities/notificacion.entity';
+import * as cron from 'node-cron';
 
 @Injectable()
-export class NotificacionService {
+export class NotificacionService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(NotificacionService.name);
+
   constructor(
     @InjectRepository(Notificacion)
     private readonly notificacionRepository: Repository<Notificacion>,
   ) {}
+
+  onApplicationBootstrap() {
+    // Configurar la tarea cron para ejecutarse todos los días a las 2:00 AM
+    cron.schedule(
+      '00 28 12 * * *',
+      async () => {
+        this.logger.log('Iniciando limpieza automática de notificaciones...');
+        try {
+          await this.eliminarNotificacionesAntiguas();
+          this.logger.log('Limpieza de notificaciones completada exitosamente');
+        } catch (error) {
+          this.logger.error(
+            'Error durante la limpieza de notificaciones:',
+            error,
+          );
+        }
+      },
+      {
+        timezone: 'America/Lima', // Ajusta según tu zona horaria
+      },
+    );
+
+    this.logger.log('Tarea cron de limpieza de notificaciones configurada');
+  }
 
   async create(
     createNotificacionDto: CreateNotificacionDto,
@@ -149,6 +181,51 @@ export class NotificacionService {
       );
     } catch (error) {
       console.error('Error al crear notificación desde trabajador:', error);
+      throw error;
+    }
+  }
+
+  // Tarea programada para eliminar notificaciones leídas hace más de 15 dias
+  async eliminarNotificacionesAntiguas(): Promise<number> {
+    try {
+      // Calcular fecha límite: 15 días atrás desde hoy
+      const fechaLimite = new Date();
+      fechaLimite.setDate(fechaLimite.getDate() - 15);
+
+      // Eliminar notificaciones que cumplan AMBAS condiciones:
+      // 1. Que estén leídas (leido = true)
+      // 2. Que tengan más de 15 días desde su creación
+      const resultado = await this.notificacionRepository.delete({
+        leido: true,
+        fecha: LessThan(fechaLimite),
+      });
+
+      const cantidadEliminada = resultado.affected || 0;
+
+      this.logger.log(
+        `Se eliminaron ${cantidadEliminada} notificaciones antiguas`,
+      );
+
+      return cantidadEliminada;
+    } catch (error) {
+      this.logger.error('Error al eliminar notificaciones antiguas:', error);
+      throw error;
+    }
+  }
+
+  // Método público para ejecutar manualmente la limpieza
+  async ejecutarLimpiezaManual(): Promise<{
+    eliminadas: number;
+    mensaje: string;
+  }> {
+    try {
+      const cantidadEliminada = await this.eliminarNotificacionesAntiguas();
+      return {
+        eliminadas: cantidadEliminada,
+        mensaje: `Se eliminaron ${cantidadEliminada} notificaciones leídas con más de 15 días de antigüedad`,
+      };
+    } catch (error) {
+      this.logger.error('Error en limpieza manual:', error);
       throw error;
     }
   }
