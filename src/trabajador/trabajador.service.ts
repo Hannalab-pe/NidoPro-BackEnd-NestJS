@@ -293,8 +293,6 @@ export class TrabajadorService {
     const trabajadores = await this.trabajadorRepository.find({
       relations: [
         'idRol',
-        'idUsuario',
-        'contratoTrabajadors3',
         'contratoTrabajadors3.idTipoContrato'
       ],
     });
