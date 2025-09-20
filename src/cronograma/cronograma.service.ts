@@ -15,19 +15,51 @@ export class CronogramaService {
     @InjectRepository(Cronograma)
     private readonly cronogramaRepository: Repository<Cronograma>,
     private readonly dataSource: DataSource,
-  ) {}
+  ) { }
 
-  async create(createCronogramaDto: CreateCronogramaDto): Promise<Cronograma> {
-    const cronogramaData = {
-      nombreActividad: createCronogramaDto.nombreActividad,
-      descripcion: createCronogramaDto.descripcion,
-      fechaInicio: createCronogramaDto.fechaInicio,
-      fechaFin: createCronogramaDto.fechaFin,
-      idAula: { idAula: createCronogramaDto.idAula },
-      idTrabajador: { idTrabajador: createCronogramaDto.idTrabajador },
-    };
-    const cronograma = this.cronogramaRepository.create(cronogramaData);
-    return await this.cronogramaRepository.save(cronograma);
+  async create(createCronogramaDto: CreateCronogramaDto): Promise<{ success: boolean; message: string; cronogramas: Cronograma[] }> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const cronogramasCreados: Cronograma[] = [];
+
+      // Crear un cronograma por cada aula especificada
+      for (const idAula of createCronogramaDto.idAulas) {
+        const cronogramaData = {
+          nombreActividad: createCronogramaDto.nombreActividad,
+          descripcion: createCronogramaDto.descripcion,
+          fechaInicio: createCronogramaDto.fechaInicio,
+          fechaFin: createCronogramaDto.fechaFin,
+          idAula: { idAula: idAula },
+          idTrabajador: { idTrabajador: createCronogramaDto.idTrabajador },
+        };
+
+        const cronograma = queryRunner.manager.create(Cronograma, cronogramaData);
+        const savedCronograma = await queryRunner.manager.save(cronograma);
+        cronogramasCreados.push(savedCronograma);
+      }
+
+      // Si todo sale bien, confirmar la transacción
+      await queryRunner.commitTransaction();
+
+      return {
+        success: true,
+        message: `Cronograma "${createCronogramaDto.nombreActividad}" creado correctamente para ${cronogramasCreados.length} aula(s)`,
+        cronogramas: cronogramasCreados,
+      };
+    } catch (error) {
+      // Si algo falla, hacer rollback
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException(
+        'Error al crear cronograma: ' + error.message,
+      );
+    } finally {
+      // Liberar el queryRunner
+      await queryRunner.release();
+    }
   }
 
   async findAll(): Promise<Cronograma[]> {
@@ -58,8 +90,15 @@ export class CronogramaService {
       fechaFin: updateCronogramaDto.fechaFin,
     };
 
-    if (updateCronogramaDto.idAula) {
-      updateData.idAula = { idAula: updateCronogramaDto.idAula };
+    // Nota: Para actualizar solo se puede cambiar a una sola aula
+    // Si necesitas cambiar a múltiples aulas, considera eliminar y recrear
+    if (updateCronogramaDto.idAulas && updateCronogramaDto.idAulas.length > 0) {
+      if (updateCronogramaDto.idAulas.length > 1) {
+        throw new BadRequestException(
+          'Para actualizar a múltiples aulas, elimine el cronograma y créelo nuevamente'
+        );
+      }
+      updateData.idAula = { idAula: updateCronogramaDto.idAulas[0] };
     }
 
     if (updateCronogramaDto.idTrabajador) {
