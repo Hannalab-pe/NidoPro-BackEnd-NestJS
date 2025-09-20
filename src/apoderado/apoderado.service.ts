@@ -37,4 +37,23 @@ export class ApoderadoService {
     return this.findOne(id);
   }
 
+  async findEstudiantesByApoderado(): Promise<Apoderado[]> {
+    return await this.apoderadoRepository.find({
+      relations: [
+        'matriculas.idEstudiante'
+      ],
+    });
+  }
+
+  async findPensionesPorApoderadoEstudiante(idApoderado: string, idEstudiante: string): Promise<Apoderado | null> {
+    return await this.apoderadoRepository
+      .createQueryBuilder('apoderado')
+      .innerJoinAndSelect('apoderado.matriculas', 'matricula')
+      .innerJoinAndSelect('matricula.idEstudiante', 'estudiante')
+      .innerJoinAndSelect('estudiante.pensionEstudiantes', 'pensionEstudiante')
+      .where('apoderado.idApoderado = :idApoderado', { idApoderado })
+      .andWhere('estudiante.idEstudiante = :idEstudiante', { idEstudiante })
+      .getOne();
+  }
+
 }

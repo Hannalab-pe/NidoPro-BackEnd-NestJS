@@ -35,6 +35,19 @@ export class AulaController {
     };
   }
 
+  @Get('pension-asignada')
+  @ApiOperation({ summary: 'Obtener todas las aulas con pensiones asignadas' })
+  async findAulasPorPension() {
+    const data = await this.aulaService.findAulasPorPensionGrado();
+    return {
+      success: true,
+      message: "Aulas con pensiones asignadas obtenidas correctamente",
+      info: {
+        data,
+      }
+    };
+  }
+
   @Get()
   @ApiOperation({ summary: 'Obtener todas las aulas' })
   async findAll() {
