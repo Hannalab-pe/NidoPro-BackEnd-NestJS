@@ -141,7 +141,7 @@ export class EstudianteService {
     estudiantes: Estudiante[];
   }> {
     const estudiantes = await this.estudianteRepository.find({
-      relations: ['idUsuario', 'contactosEmergencia'],
+      relations: ['idUsuario', 'contactosEmergencia', 'matriculas.matriculaAula', 'matriculas.matriculaAula.aula', 'matriculas.matriculaAula.aula.idGrado'],
     });
     return {
       sucess: true,
