@@ -22,11 +22,13 @@ export class NotificacionService implements OnApplicationBootstrap {
   ) {}
 
   onApplicationBootstrap() {
-    // Configurar la tarea cron para ejecutarse todos los días a las 2:00 AM
+    // Configurar la tarea cron para ejecutarse el día 15 de cada mes a las 2:00 AM
     cron.schedule(
-      '00 28 12 * * *',
+      '0 3 15 * *',
       async () => {
-        this.logger.log('Iniciando limpieza automática de notificaciones...');
+        this.logger.log(
+          'Iniciando limpieza automática de notificaciones (día 15 del mes)...',
+        );
         try {
           await this.eliminarNotificacionesAntiguas();
           this.logger.log('Limpieza de notificaciones completada exitosamente');
@@ -42,7 +44,9 @@ export class NotificacionService implements OnApplicationBootstrap {
       },
     );
 
-    this.logger.log('Tarea cron de limpieza de notificaciones configurada');
+    this.logger.log(
+      'Tarea cron configurada: limpieza cada día 15 del mes a las 3:00 AM',
+    );
   }
 
   async create(
