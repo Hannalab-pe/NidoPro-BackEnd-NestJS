@@ -62,7 +62,7 @@ export class NotificacionService {
   async findByUsuario(idUsuario: string): Promise<Notificacion[]> {
     return await this.notificacionRepository.find({
       where: { idUsuario },
-      relations: ['trabajador', 'usuarioGenerador'],
+      relations: ['usuario', 'usuarioGenerador'],
       order: { fecha: 'DESC' },
     });
   }
