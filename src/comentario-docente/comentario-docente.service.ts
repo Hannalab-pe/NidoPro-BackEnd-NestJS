@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CreateComentarioDocenteDto } from './dto/create-comentario-docente.dto';
 import { UpdateComentarioDocenteDto } from './dto/update-comentario-docente.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ComentarioDocente } from './entities/comentario-docente.entity';
 import { Repository } from 'typeorm';
 import { TrabajadorService } from 'src/trabajador/trabajador.service';
+import { NotificacionService } from 'src/notificacion/notificacion.service';
 
 @Injectable()
 export class ComentarioDocenteService {
@@ -12,28 +17,54 @@ export class ComentarioDocenteService {
     @InjectRepository(ComentarioDocente)
     private readonly comentarioRepository: Repository<ComentarioDocente>,
     private readonly trabajadorService: TrabajadorService,
+    private readonly notificacionService: NotificacionService,
   ) {}
 
-  async create(createComentarioDocenteDto: CreateComentarioDocenteDto): Promise<{
+  async create(
+    createComentarioDocenteDto: CreateComentarioDocenteDto,
+  ): Promise<{
     success: boolean;
     message: string;
     comentario: ComentarioDocente;
   }> {
     // Validar que el trabajador existe
-    const trabajador = await this.trabajadorService.findOne(createComentarioDocenteDto.idTrabajador);
+    const trabajador = await this.trabajadorService.findOne(
+      createComentarioDocenteDto.idTrabajador,
+    );
     if (!trabajador) {
       throw new NotFoundException('El trabajador especificado no existe');
     }
 
     // Validar que el coordinador existe
-    const coordinador = await this.trabajadorService.findOne(createComentarioDocenteDto.idCoordinador);
+    const coordinador = await this.trabajadorService.findOne(
+      createComentarioDocenteDto.idCoordinador,
+    );
     if (!coordinador) {
       throw new NotFoundException('El coordinador especificado no existe');
     }
 
     try {
-      const nuevoComentario = this.comentarioRepository.create(createComentarioDocenteDto);
-      const comentarioGuardado = await this.comentarioRepository.save(nuevoComentario);
+      const nuevoComentario = this.comentarioRepository.create(
+        createComentarioDocenteDto,
+      );
+      const comentarioGuardado =
+        await this.comentarioRepository.save(nuevoComentario);
+
+      // Generar notificación automática para el docente
+      try {
+        await this.notificacionService.crearNotificacionAutomatica(
+          'Nuevo comentario del administrador',
+          'El administrador registró un comentario nuevo para ti',
+          createComentarioDocenteDto.idTrabajador, // docente que recibe la notificación
+          createComentarioDocenteDto.idCoordinador, // administrador que genera la notificación
+        );
+      } catch (notificationError) {
+        // Log del error pero no fallar la creación del comentario
+        console.error(
+          'Error al crear notificación automática:',
+          notificationError,
+        );
+      }
 
       return {
         success: true,
@@ -41,7 +72,9 @@ export class ComentarioDocenteService {
         comentario: comentarioGuardado,
       };
     } catch (error) {
-      throw new BadRequestException('Error al crear el comentario docente: ' + error.message);
+      throw new BadRequestException(
+        'Error al crear el comentario docente: ' + error.message,
+      );
     }
   }
 
@@ -73,13 +106,18 @@ export class ComentarioDocenteService {
     });
 
     if (!comentario) {
-      throw new NotFoundException(`No se encontró el comentario docente con ID ${id}`);
+      throw new NotFoundException(
+        `No se encontró el comentario docente con ID ${id}`,
+      );
     }
 
     return comentario;
   }
 
-  async update(id: string, updateComentarioDocenteDto: UpdateComentarioDocenteDto): Promise<{
+  async update(
+    id: string,
+    updateComentarioDocenteDto: UpdateComentarioDocenteDto,
+  ): Promise<{
     success: boolean;
     message: string;
     comentario: ComentarioDocente;
@@ -88,7 +126,9 @@ export class ComentarioDocenteService {
 
     // Validar trabajador si se está actualizando
     if (updateComentarioDocenteDto.idTrabajador) {
-      const trabajador = await this.trabajadorService.findOne(updateComentarioDocenteDto.idTrabajador);
+      const trabajador = await this.trabajadorService.findOne(
+        updateComentarioDocenteDto.idTrabajador,
+      );
       if (!trabajador) {
         throw new NotFoundException('El trabajador especificado no existe');
       }
@@ -96,7 +136,9 @@ export class ComentarioDocenteService {
 
     // Validar coordinador si se está actualizando
     if (updateComentarioDocenteDto.idCoordinador) {
-      const coordinador = await this.trabajadorService.findOne(updateComentarioDocenteDto.idCoordinador);
+      const coordinador = await this.trabajadorService.findOne(
+        updateComentarioDocenteDto.idCoordinador,
+      );
       if (!coordinador) {
         throw new NotFoundException('El coordinador especificado no existe');
       }
@@ -112,7 +154,9 @@ export class ComentarioDocenteService {
         comentario: comentarioActualizado,
       };
     } catch (error) {
-      throw new BadRequestException('Error al actualizar el comentario docente: ' + error.message);
+      throw new BadRequestException(
+        'Error al actualizar el comentario docente: ' + error.message,
+      );
     }
   }
 
@@ -124,13 +168,15 @@ export class ComentarioDocenteService {
 
     try {
       await this.comentarioRepository.remove(comentario);
-      
+
       return {
         success: true,
         message: 'Comentario docente eliminado exitosamente',
       };
     } catch (error) {
-      throw new BadRequestException('Error al eliminar el comentario docente: ' + error.message);
+      throw new BadRequestException(
+        'Error al eliminar el comentario docente: ' + error.message,
+      );
     }
   }
 }

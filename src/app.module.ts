@@ -47,6 +47,7 @@ import { ContactoEmergenciaModule } from './contacto-emergencia/contacto-emergen
 import { PlanificacionModule } from './planificacion/planificacion.module';
 import { ComentarioDocenteModule } from './comentario-docente/comentario-docente.module';
 import { RAGModule } from './rag/rag.module';
+import { NotificacionModule } from './notificacion/notificacion.module';
 
 @Module({
   imports: [
@@ -107,6 +108,7 @@ import { RAGModule } from './rag/rag.module';
     ContactoEmergenciaModule,
     PlanificacionModule,
     ComentarioDocenteModule,
+    NotificacionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

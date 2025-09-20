@@ -24,6 +24,7 @@ import { Rol } from 'src/rol/entities/rol.entity';
 import { SeguroTrabajador } from 'src/seguro-trabajador/entities/seguro-trabajador.entity';
 import { SueldoTrabajador } from 'src/sueldo-trabajador/entities/sueldo-trabajador.entity';
 import { Tarea } from 'src/tarea/entities/tarea.entity';
+import { Notificacion } from 'src/notificacion/entities/notificacion.entity';
 
 @Index(
   'idx_trabajador_info',
@@ -229,6 +230,15 @@ export class Trabajador {
 
   @OneToMany(() => Tarea, (tarea) => tarea.idTrabajador)
   tareas: Tarea[];
+
+  @OneToMany(() => Notificacion, (notificacion) => notificacion.trabajador)
+  notificaciones: Notificacion[];
+
+  @OneToMany(
+    () => Notificacion,
+    (notificacion) => notificacion.usuarioGenerador,
+  )
+  notificacionesGeneradas: Notificacion[];
 
   @ManyToOne(() => Rol, (rol) => rol.trabajadores, { onDelete: 'RESTRICT' })
   @JoinColumn([{ name: 'id_rol', referencedColumnName: 'idRol' }])
