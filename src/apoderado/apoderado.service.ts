@@ -48,9 +48,9 @@ export class ApoderadoService {
   async findPensionesPorApoderadoEstudiante(idApoderado: string, idEstudiante: string): Promise<Apoderado | null> {
     return await this.apoderadoRepository
       .createQueryBuilder('apoderado')
-      .leftJoinAndSelect('apoderado.matriculas', 'matricula')
-      .leftJoinAndSelect('matricula.pensionEstudiantes', 'pensionEstudiante')
-      .leftJoinAndSelect('matricula.idEstudiante', 'estudiante')
+      .innerJoinAndSelect('apoderado.matriculas', 'matricula')
+      .innerJoinAndSelect('matricula.idEstudiante', 'estudiante')
+      .innerJoinAndSelect('estudiante.pensionEstudiantes', 'pensionEstudiante')
       .where('apoderado.idApoderado = :idApoderado', { idApoderado })
       .andWhere('estudiante.idEstudiante = :idEstudiante', { idEstudiante })
       .getOne();

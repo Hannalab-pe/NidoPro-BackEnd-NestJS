@@ -29,6 +29,19 @@ export class ApoderadoController {
     };
   }
 
+  @Get('pensiones/:idApoderado/:idEstudiante')
+  @ApiOperation({ summary: 'Obtener pensiones de un estudiante específico por ID de apoderado e ID de estudiante' })
+  async findPensionesPorApoderadoEstudiante(@Param('idApoderado') idApoderado: string, @Param('idEstudiante') idEstudiante: string) {
+    const data = await this.apoderadoService.findPensionesPorApoderadoEstudiante(idApoderado, idEstudiante);
+    return {
+      success: true,
+      message: "Pensiones por Apoderado y Estudiante Obtenidas Correctamente",
+      info: {
+        data,
+      }
+    };
+  }
+
   @Get('estudiantes')
   @ApiOperation({ summary: 'Obtener apoderado con sus estudiantes por ID de apoderado (Directora, secretaria y docentes)' })
   async findEstudiantesByApoderado() {
