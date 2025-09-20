@@ -1,6 +1,8 @@
-import { Column, Entity, Index, OneToOne } from 'typeorm';
+import { Column, Entity, Index, OneToOne, OneToMany } from 'typeorm';
 import { Estudiante } from '../../estudiante/entities/estudiante.entity';
 import { Trabajador } from 'src/trabajador/entities/trabajador.entity';
+import { Notificacion } from 'src/notificacion/entities/notificacion.entity';
+
 @Index('idx_usuario_fechas', ['actualizado', 'creado'], {})
 @Index('idx_usuario_auth', ['contrasena', 'estaActivo', 'usuario'], {})
 @Index('usuario_pkey', ['idUsuario'], { unique: true })
@@ -52,4 +54,7 @@ export class Usuario {
 
   @OneToOne(() => Trabajador, (trabajador) => trabajador.idUsuario)
   trabajadores: Trabajador[];
+
+  @OneToMany(() => Notificacion, (notificacion) => notificacion.usuario)
+  notificaciones: Notificacion[];
 }

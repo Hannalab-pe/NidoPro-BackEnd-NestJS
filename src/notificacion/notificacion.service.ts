@@ -25,7 +25,7 @@ export class NotificacionService {
 
   async findAll(): Promise<Notificacion[]> {
     return await this.notificacionRepository.find({
-      relations: ['trabajador', 'usuarioGenerador'],
+      relations: ['usuario', 'usuarioGenerador'],
       order: { fecha: 'DESC' },
     });
   }
@@ -33,7 +33,7 @@ export class NotificacionService {
   async findOne(id: string): Promise<Notificacion> {
     const notificacion = await this.notificacionRepository.findOne({
       where: { idNotificacion: id },
-      relations: ['trabajador', 'usuarioGenerador'],
+      relations: ['usuario', 'usuarioGenerador'],
     });
 
     if (!notificacion) {
@@ -59,23 +59,21 @@ export class NotificacionService {
   }
 
   // Métodos especiales
-  async findByTrabajador(idTrabajador: string): Promise<Notificacion[]> {
+  async findByUsuario(idUsuario: string): Promise<Notificacion[]> {
     return await this.notificacionRepository.find({
-      where: { idTrabajador },
+      where: { idUsuario },
       relations: ['trabajador', 'usuarioGenerador'],
       order: { fecha: 'DESC' },
     });
   }
 
-  async findByTrabajadorNoLeidas(
-    idTrabajador: string,
-  ): Promise<Notificacion[]> {
+  async findByUsuarioNoLeidas(idUsuario: string): Promise<Notificacion[]> {
     return await this.notificacionRepository.find({
       where: {
-        idTrabajador,
+        idUsuario,
         leido: false,
       },
-      relations: ['trabajador', 'usuarioGenerador'],
+      relations: ['usuario', 'usuarioGenerador'],
       order: { fecha: 'DESC' },
     });
   }
@@ -90,17 +88,17 @@ export class NotificacionService {
     return await this.notificacionRepository.save(notificacion);
   }
 
-  async marcarTodasComoLeidas(idTrabajador: string): Promise<void> {
+  async marcarTodasComoLeidas(idUsuario: string): Promise<void> {
     await this.notificacionRepository.update(
-      { idTrabajador, leido: false },
+      { idUsuario, leido: false },
       { leido: true },
     );
   }
 
-  async contarNoLeidas(idTrabajador: string): Promise<number> {
+  async contarNoLeidas(idUsuario: string): Promise<number> {
     return await this.notificacionRepository.count({
       where: {
-        idTrabajador,
+        idUsuario,
         leido: false,
       },
     });
@@ -110,7 +108,7 @@ export class NotificacionService {
   async crearNotificacionAutomatica(
     titulo: string,
     descripcion: string,
-    idTrabajador: string,
+    idUsuario: string,
     generadoPor: string,
   ): Promise<Notificacion> {
     const notificacion = this.notificacionRepository.create({
@@ -118,7 +116,7 @@ export class NotificacionService {
       descripcion,
       fecha: new Date(),
       leido: false,
-      idTrabajador,
+      idUsuario,
       generadoPor,
     });
 
