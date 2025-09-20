@@ -28,25 +28,18 @@ export class AsignacionAulaService {
       throw new NotFoundException(`Trabajador con ID ${createAsignacionAulaDto.idTrabajador} no encontrado`);
     }
 
-    //Validar Trabajador Existente
-    const asignacionExistenteTrabajador = await this.findOneByTrabajadorActivo(createAsignacionAulaDto.idTrabajador);
-
-    if (asignacionExistenteTrabajador) {
-      throw new NotFoundException(`El trabajador con ID ${createAsignacionAulaDto.idTrabajador} ya tiene un aula asignada actualmente.`);
-    }
-
-    //Validar aula no tenga un trabajador asignado
-    const asignacionExistenteAula = await this.asignacionAulaRepository
+    // Validar que no exista ya una asignación activa del mismo trabajador a la misma aula (evitar duplicados)
+    const asignacionDuplicada = await this.asignacionAulaRepository
       .createQueryBuilder('asignacionAula')
       .leftJoinAndSelect('asignacionAula.idAula', 'aula')
       .leftJoinAndSelect('asignacionAula.idTrabajador', 'trabajador')
       .where('aula.idAula = :idAula', { idAula: createAsignacionAulaDto.idAula })
+      .andWhere('trabajador.idTrabajador = :idTrabajador', { idTrabajador: createAsignacionAulaDto.idTrabajador })
       .andWhere('asignacionAula.estadoActivo = :estadoActivo', { estadoActivo: true })
-      .andWhere('trabajador.idTrabajador = ')
       .getOne();
 
-    if (asignacionExistenteAula) {
-      throw new NotFoundException(`El aula con ID ${createAsignacionAulaDto.idAula} ya tiene un trabajador asignado actualmente.`);
+    if (asignacionDuplicada) {
+      throw new NotFoundException(`El trabajador con ID ${createAsignacionAulaDto.idTrabajador} ya está asignado al aula con ID ${createAsignacionAulaDto.idAula}. No se permiten registros duplicados.`);
     }
 
     const asignacionAula = new AsignacionAula();
