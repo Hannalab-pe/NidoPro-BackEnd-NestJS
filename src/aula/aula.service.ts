@@ -157,6 +157,15 @@ export class AulaService {
     };
   }
 
+  async findAulasPorPensionGrado(): Promise<Aula[]> {
+    return await this.aulaRepository
+      .createQueryBuilder('aula')
+      .innerJoin('aula.idGrado', 'grado')
+      .innerJoin('grado.idPension', 'pension')
+      .select(['aula', 'grado', 'pension'])
+      .getMany();
+  }
+
   async findAulasSinAsignacion(): Promise<Aula[]> {
     return await this.aulaRepository
       .createQueryBuilder('aula')

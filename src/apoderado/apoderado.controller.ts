@@ -10,9 +10,7 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('Apoderados')
-@ApiBearerAuth()
 @Controller('apoderado')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class ApoderadoController {
   constructor(private readonly apoderadoService: ApoderadoService) { }
 
@@ -30,6 +28,20 @@ export class ApoderadoController {
       }
     };
   }
+
+  @Get('estudiantes')
+  @ApiOperation({ summary: 'Obtener apoderado con sus estudiantes por ID de apoderado (Directora, secretaria y docentes)' })
+  async findEstudiantesByApoderado() {
+    const data = await this.apoderadoService.findEstudiantesByApoderado();
+    return {
+      success: true,
+      message: "Apoderado con Estudiantes Obtenido Correctamente",
+      info: {
+        data,
+      }
+    };
+  }
+
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los apoderados (Directora, secretaria y docentes)' })

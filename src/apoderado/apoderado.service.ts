@@ -37,4 +37,12 @@ export class ApoderadoService {
     return this.findOne(id);
   }
 
+  async findEstudiantesByApoderado(): Promise<Apoderado[]> {
+    return await this.apoderadoRepository.find({
+      relations: [
+        'matriculas.idEstudiante'
+      ],
+    });
+  }
+
 }
