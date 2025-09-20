@@ -42,6 +42,7 @@ export class AsignacionAulaService {
       .leftJoinAndSelect('asignacionAula.idTrabajador', 'trabajador')
       .where('aula.idAula = :idAula', { idAula: createAsignacionAulaDto.idAula })
       .andWhere('asignacionAula.estadoActivo = :estadoActivo', { estadoActivo: true })
+      .andWhere('trabajador.idTrabajador = ')
       .getOne();
 
     if (asignacionExistenteAula) {

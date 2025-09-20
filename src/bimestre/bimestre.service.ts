@@ -1,16 +1,18 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateBimestreDto } from './dto/create-bimestre.dto';
 import { UpdateBimestreDto } from './dto/update-bimestre.dto';
+import { UpdateFechasBimestresDto } from './dto/update-fechas-bimestres.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Bimestre } from './entities/bimestre.entity';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { PeriodoEscolarService } from 'src/periodo-escolar/periodo-escolar.service';
 
 @Injectable()
 export class BimestreService {
 
   constructor(@InjectRepository(Bimestre) private readonly bimestreRepository: Repository<Bimestre>,
-    private readonly periodoService: PeriodoEscolarService) { }
+    private readonly periodoService: PeriodoEscolarService,
+    private readonly dataSource: DataSource) { }
 
   // Función para determinar bimestres de un periodo escolar
   private obtenerBimestres(fechaInicio: Date, fechaFin: Date) {
@@ -405,6 +407,11 @@ export class BimestreService {
   async update(id: string, updateBimestreDto: UpdateBimestreDto): Promise<{ success: boolean; message: string; bimestre: Bimestre }> {
     const bimestre = await this.findOne(id);
 
+    // VALIDACIÓN CRÍTICA: No permitir modificar fechas de bimestres activos (excepto estaActivo)
+    if (bimestre.estaActivo && (updateBimestreDto.fechaInicio || updateBimestreDto.fechaFin || updateBimestreDto.fechaLimiteProgramacion)) {
+      throw new BadRequestException('No se pueden modificar las fechas de un bimestre activo ya que está en uso actualmente. Solo se permite cambiar el estado activo.');
+    }
+
     // Validar fechas si se están actualizando
     if (updateBimestreDto.fechaInicio || updateBimestreDto.fechaFin || updateBimestreDto.fechaLimiteProgramacion) {
       const fechaInicio = new Date(updateBimestreDto.fechaInicio || bimestre.fechaInicio);
@@ -445,6 +452,162 @@ export class BimestreService {
       message: 'Bimestre actualizado correctamente',
       bimestre: updatedBimestre
     };
+  }
+
+  // NUEVO MÉTODO: Actualización masiva de fechas de bimestres
+  async updateFechasMasivo(updateFechasDto: UpdateFechasBimestresDto): Promise<{
+    success: boolean;
+    message: string;
+    bimestresActualizados: Bimestre[];
+    errores?: any[]
+  }> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const bimestresActualizados: Bimestre[] = [];
+      const errores: any[] = [];
+
+      // Validar que todos los bimestres existen
+      for (const bimestreData of updateFechasDto.bimestres) {
+        try {
+          const bimestre = await this.findOne(bimestreData.id);
+
+
+          // Validar fechas
+          const fechaInicio = new Date(bimestreData.fechaInicio);
+          const fechaFin = new Date(bimestreData.fechaFin);
+          const fechaLimite = bimestreData.fechaLimiteProgramacion
+            ? new Date(bimestreData.fechaLimiteProgramacion)
+            : new Date(bimestre.fechaLimiteProgramacion);
+
+          // Validaciones básicas de fechas
+          if (fechaFin <= fechaInicio) {
+            throw new BadRequestException(`Bimestre ${bimestre.numeroBimestre}: La fecha de fin debe ser posterior a la fecha de inicio`);
+          }
+
+          if (fechaLimite >= fechaInicio) {
+            throw new BadRequestException(`Bimestre ${bimestre.numeroBimestre}: La fecha límite de programación debe ser anterior a la fecha de inicio`);
+          }
+
+          // Validar que las fechas estén dentro del período escolar
+          const periodoEscolar = bimestre.idPeriodoEscolar2;
+          const fechaInicioPeriodo = new Date(periodoEscolar.fechaInicio);
+          const fechaFinPeriodo = new Date(periodoEscolar.fechaFin);
+
+          if (fechaInicio < fechaInicioPeriodo || fechaFin > fechaFinPeriodo) {
+            throw new BadRequestException(`Bimestre ${bimestre.numeroBimestre}: Las fechas deben estar dentro del período escolar (${periodoEscolar.fechaInicio} - ${periodoEscolar.fechaFin})`);
+          }
+
+        } catch (error) {
+          errores.push({
+            id: bimestreData.id,
+            error: error.message
+          });
+        }
+      }
+
+      // Si hay errores de validación, no proceder
+      if (errores.length > 0) {
+        await queryRunner.rollbackTransaction();
+        return {
+          success: false,
+          message: 'Se encontraron errores de validación',
+          bimestresActualizados: [],
+          errores
+        };
+      }
+
+      // Validar que no haya solapamientos entre bimestres del mismo período
+      const bimestresPorPeriodo = new Map<string, any[]>();
+
+      for (const bimestreData of updateFechasDto.bimestres) {
+        const bimestre = await this.findOne(bimestreData.id);
+        const periodoId = bimestre.idPeriodoEscolar;
+
+        if (!bimestresPorPeriodo.has(periodoId)) {
+          bimestresPorPeriodo.set(periodoId, []);
+        }
+
+        bimestresPorPeriodo.get(periodoId)!.push({
+          ...bimestre,
+          nuevaFechaInicio: bimestreData.fechaInicio,
+          nuevaFechaFin: bimestreData.fechaFin
+        });
+      }
+
+      // Validar orden cronológico por período
+      for (const [periodoId, bimestres] of bimestresPorPeriodo) {
+        // Obtener todos los bimestres del período incluyendo los no modificados
+        const todosBimestres = await this.bimestreRepository.find({
+          where: { idPeriodoEscolar: periodoId },
+          order: { numeroBimestre: 'ASC' }
+        });
+
+        // Aplicar nuevas fechas a los bimestres que se van a actualizar
+        const bimestresConNuevasFechas = todosBimestres.map(bim => {
+          const bimestreActualizado = bimestres.find(b => b.idBimestre === bim.idBimestre);
+          if (bimestreActualizado) {
+            return {
+              ...bim,
+              fechaInicio: bimestreActualizado.nuevaFechaInicio,
+              fechaFin: bimestreActualizado.nuevaFechaFin
+            };
+          }
+          return bim;
+        });
+
+        // Validar orden cronológico
+        for (let i = 1; i < bimestresConNuevasFechas.length; i++) {
+          const anterior = new Date(bimestresConNuevasFechas[i - 1].fechaFin);
+          const actual = new Date(bimestresConNuevasFechas[i].fechaInicio);
+
+          if (actual <= anterior) {
+            throw new BadRequestException(
+              `Error de orden cronológico: El bimestre ${bimestresConNuevasFechas[i].numeroBimestre} debe comenzar después de que termine el bimestre ${bimestresConNuevasFechas[i - 1].numeroBimestre}`
+            );
+          }
+        }
+      }
+
+      // Si todas las validaciones pasan, proceder con las actualizaciones
+      for (const bimestreData of updateFechasDto.bimestres) {
+        const updateData: any = {
+          fechaInicio: bimestreData.fechaInicio,
+          fechaFin: bimestreData.fechaFin
+        };
+
+        if (bimestreData.fechaLimiteProgramacion) {
+          updateData.fechaLimiteProgramacion = bimestreData.fechaLimiteProgramacion;
+        }
+
+        await queryRunner.manager.update(Bimestre, bimestreData.id, updateData);
+
+        const bimestreActualizado = await queryRunner.manager.findOne(Bimestre, {
+          where: { idBimestre: bimestreData.id },
+          relations: ['idPeriodoEscolar2']
+        });
+
+        if (bimestreActualizado) {
+          bimestresActualizados.push(bimestreActualizado);
+        }
+      }
+
+      await queryRunner.commitTransaction();
+
+      return {
+        success: true,
+        message: `Se actualizaron correctamente ${bimestresActualizados.length} bimestres`,
+        bimestresActualizados
+      };
+
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new BadRequestException('Error al actualizar fechas masivamente: ' + error.message);
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async activar(id: string): Promise<{ success: boolean; message: string; bimestre: Bimestre }> {
