@@ -122,4 +122,34 @@ export class NotificacionService {
 
     return await this.notificacionRepository.save(notificacion);
   }
+
+  // Método conveniente para crear notificaciones usando idTrabajador (se convierte a idUsuario)
+  async crearNotificacionDesdeTrabajador(
+    titulo: string,
+    descripcion: string,
+    idTrabajadorDestino: string,
+    idTrabajadorGenerador: string,
+    trabajadorService: any, // Inyectado desde el módulo que lo usa
+  ): Promise<Notificacion> {
+    try {
+      // Obtener el trabajador con su relación de usuario
+      const trabajador = await trabajadorService.findOne(idTrabajadorDestino);
+
+      if (!trabajador || !trabajador.idUsuario?.idUsuario) {
+        throw new Error(
+          `El trabajador ${idTrabajadorDestino} no tiene un usuario asociado`,
+        );
+      }
+
+      return await this.crearNotificacionAutomatica(
+        titulo,
+        descripcion,
+        trabajador.idUsuario.idUsuario, // Convertir a idUsuario
+        idTrabajadorGenerador,
+      );
+    } catch (error) {
+      console.error('Error al crear notificación desde trabajador:', error);
+      throw error;
+    }
+  }
 }

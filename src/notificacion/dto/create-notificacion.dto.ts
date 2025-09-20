@@ -26,11 +26,11 @@ export class CreateNotificacionDto {
   fecha?: Date;
 
   @ApiProperty({
-    description: 'UUID del trabajador que recibe la notificación',
+    description: 'UUID del usuario que recibe la notificación',
   })
   @IsUUID()
   @IsNotEmpty()
-  idTrabajador: string;
+  idUsuario: string;
 
   @ApiProperty({
     description: 'UUID del trabajador que genera la notificación',
