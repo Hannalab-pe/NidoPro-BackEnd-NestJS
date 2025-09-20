@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { BimestreService } from './bimestre.service';
 import { CreateBimestreDto } from './dto/create-bimestre.dto';
 import { UpdateBimestreDto } from './dto/update-bimestre.dto';
+import { UpdateFechasBimestresDto } from './dto/update-fechas-bimestres.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Bimestre')
@@ -23,7 +24,7 @@ export class BimestreController {
     return await this.bimestreService.generarBimestresAutomaticos(idPeriodoEscolar);
   }
 
- 
+
 
   @Get('fechas-sugeridas/:idPeriodoEscolar/:numeroBimestre')
   @ApiOperation({ summary: 'Obtener fechas sugeridas para un bimestre' })
@@ -54,6 +55,14 @@ export class BimestreController {
   @ApiResponse({ status: 200, description: 'Bimestre activado correctamente' })
   async activar(@Param('id') id: string) {
     return await this.bimestreService.activar(id);
+  }
+
+  @Patch('actualizar-fechas-masivo')
+  @ApiOperation({ summary: 'Actualizar fechas de múltiples bimestres de forma masiva' })
+  @ApiResponse({ status: 200, description: 'Fechas de bimestres actualizadas correctamente' })
+  @ApiResponse({ status: 400, description: 'Error en validación de fechas o datos' })
+  async actualizarFechasMasivo(@Body() updateFechasDto: UpdateFechasBimestresDto) {
+    return await this.bimestreService.updateFechasMasivo(updateFechasDto);
   }
 
   @Get()
