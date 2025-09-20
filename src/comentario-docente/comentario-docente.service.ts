@@ -52,12 +52,24 @@ export class ComentarioDocenteService {
 
       // Generar notificación automática para el docente
       try {
-        await this.notificacionService.crearNotificacionAutomatica(
-          'Nuevo comentario del administrador',
-          'El administrador registró un comentario nuevo para ti',
-          createComentarioDocenteDto.idTrabajador, // docente que recibe la notificación
-          createComentarioDocenteDto.idCoordinador, // administrador que genera la notificación
+        // Obtener el idUsuario del trabajador para la notificación
+        const trabajadorConUsuario = await this.trabajadorService.findOne(
+          createComentarioDocenteDto.idTrabajador,
         );
+        const idUsuarioDocente = trabajadorConUsuario.idUsuario?.idUsuario;
+
+        if (!idUsuarioDocente) {
+          console.warn(
+            `El trabajador ${createComentarioDocenteDto.idTrabajador} no tiene un usuario asociado`,
+          );
+        } else {
+          await this.notificacionService.crearNotificacionAutomatica(
+            'Nuevo comentario del administrador',
+            'El administrador registró un comentario nuevo para ti',
+            idUsuarioDocente, // idUsuario del docente que recibe la notificación
+            createComentarioDocenteDto.idCoordinador, // idTrabajador del administrador que genera la notificación
+          );
+        }
       } catch (notificationError) {
         // Log del error pero no fallar la creación del comentario
         console.error(

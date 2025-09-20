@@ -231,9 +231,6 @@ export class Trabajador {
   @OneToMany(() => Tarea, (tarea) => tarea.idTrabajador)
   tareas: Tarea[];
 
-  @OneToMany(() => Notificacion, (notificacion) => notificacion.trabajador)
-  notificaciones: Notificacion[];
-
   @OneToMany(
     () => Notificacion,
     (notificacion) => notificacion.usuarioGenerador,

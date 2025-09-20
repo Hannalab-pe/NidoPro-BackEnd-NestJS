@@ -47,40 +47,38 @@ export class NotificacionController {
     return this.notificacionService.findOne(id);
   }
 
-  @Get('trabajador/:idTrabajador')
+  @Get('usuario/:idUsuario')
   @ApiOperation({
-    summary: 'Obtener todas las notificaciones de un trabajador',
+    summary: 'Obtener todas las notificaciones de un usuario',
   })
-  @ApiParam({ name: 'idTrabajador', description: 'ID del trabajador' })
-  @ApiResponse({ status: 200, description: 'Notificaciones del trabajador' })
-  findByTrabajador(@Param('idTrabajador', ParseUUIDPipe) idTrabajador: string) {
-    return this.notificacionService.findByTrabajador(idTrabajador);
+  @ApiParam({ name: 'idUsuario', description: 'ID del usuario' })
+  @ApiResponse({ status: 200, description: 'Notificaciones del usuario' })
+  findByUsuario(@Param('idUsuario', ParseUUIDPipe) idUsuario: string) {
+    return this.notificacionService.findByUsuario(idUsuario);
   }
 
-  @Get('trabajador/:idTrabajador/no-leidas')
+  @Get('usuario/:idUsuario/no-leidas')
   @ApiOperation({
-    summary: 'Obtener notificaciones no leídas de un trabajador',
+    summary: 'Obtener notificaciones no leídas de un usuario',
   })
-  @ApiParam({ name: 'idTrabajador', description: 'ID del trabajador' })
+  @ApiParam({ name: 'idUsuario', description: 'ID del usuario' })
   @ApiResponse({
     status: 200,
-    description: 'Notificaciones no leídas del trabajador',
+    description: 'Notificaciones no leídas del usuario',
   })
-  findByTrabajadorNoLeidas(
-    @Param('idTrabajador', ParseUUIDPipe) idTrabajador: string,
-  ) {
-    return this.notificacionService.findByTrabajadorNoLeidas(idTrabajador);
+  findByUsuarioNoLeidas(@Param('idUsuario', ParseUUIDPipe) idUsuario: string) {
+    return this.notificacionService.findByUsuarioNoLeidas(idUsuario);
   }
 
-  @Get('trabajador/:idTrabajador/contar-no-leidas')
-  @ApiOperation({ summary: 'Contar notificaciones no leídas de un trabajador' })
-  @ApiParam({ name: 'idTrabajador', description: 'ID del trabajador' })
+  @Get('usuario/:idUsuario/contar-no-leidas')
+  @ApiOperation({ summary: 'Contar notificaciones no leídas de un usuario' })
+  @ApiParam({ name: 'idUsuario', description: 'ID del usuario' })
   @ApiResponse({
     status: 200,
     description: 'Número de notificaciones no leídas',
   })
-  contarNoLeidas(@Param('idTrabajador', ParseUUIDPipe) idTrabajador: string) {
-    return this.notificacionService.contarNoLeidas(idTrabajador);
+  contarNoLeidas(@Param('idUsuario', ParseUUIDPipe) idUsuario: string) {
+    return this.notificacionService.contarNoLeidas(idUsuario);
   }
 
   @Patch(':id')
@@ -110,20 +108,20 @@ export class NotificacionController {
     return this.notificacionService.marcarComoLeido(id, marcarLeidoDto);
   }
 
-  @Patch('trabajador/:idTrabajador/marcar-todas-leidas')
+  @Patch('usuario/:idUsuario/marcar-todas-leidas')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
-    summary: 'Marcar todas las notificaciones de un trabajador como leídas',
+    summary: 'Marcar todas las notificaciones de un usuario como leídas',
   })
-  @ApiParam({ name: 'idTrabajador', description: 'ID del trabajador' })
+  @ApiParam({ name: 'idUsuario', description: 'ID del usuario' })
   @ApiResponse({
     status: 204,
     description: 'Todas las notificaciones marcadas como leídas',
   })
   async marcarTodasComoLeidas(
-    @Param('idTrabajador', ParseUUIDPipe) idTrabajador: string,
+    @Param('idUsuario', ParseUUIDPipe) idUsuario: string,
   ) {
-    await this.notificacionService.marcarTodasComoLeidas(idTrabajador);
+    await this.notificacionService.marcarTodasComoLeidas(idUsuario);
   }
 
   @Delete(':id')
