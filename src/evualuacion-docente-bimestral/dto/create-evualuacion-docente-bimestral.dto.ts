@@ -1,51 +1,181 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsString, IsUUID, IsOptional, IsNumber, Min, Max, Length, IsDateString } from "class-validator";
+import { IsString, IsUUID, IsOptional, IsNumber, Min, Max, Length, IsDateString, IsEnum } from "class-validator";
+import { TipoCalificacion, CalificacionLiteral } from "../enums/tipo-calificacion.enum";
+import { IsValidCalificacion } from "../validators/calificacion.validator";
 
 export class CreateEvualuacionDocenteBimestralDto {
+    // Campo configurativo para determinar el tipo de calificación
     @ApiProperty({
-        description: 'Puntaje de planificación (0-20)',
-        example: 18.5
+        description: 'Tipo de calificación a usar para validación',
+        enum: TipoCalificacion,
+        example: TipoCalificacion.NUMERICA
     })
+    @IsEnum(TipoCalificacion, { message: 'Tipo de calificación debe ser NUMERICA o LITERAL' })
+    @IsValidCalificacion({ message: 'Los campos de calificación deben coincidir con el tipo seleccionado' })
+    tipoCalificacion: TipoCalificacion;
+
+    // CAMPOS NUMÉRICOS (0-20) - Opcionales según configuración
+    @ApiProperty({
+        description: 'Puntaje numérico de planificación (0-20)',
+        example: 18.5,
+        required: false
+    })
+    @IsOptional()
     @IsNumber({}, { message: 'El puntaje de planificación debe ser un número' })
     @Min(0, { message: 'El puntaje de planificación mínimo es 0' })
     @Max(20, { message: 'El puntaje de planificación máximo es 20' })
-    puntajePlanificacion: number;
+    puntajePlanificacionNumerico?: number;
 
     @ApiProperty({
-        description: 'Puntaje de metodología (0-20)',
-        example: 16.5
+        description: 'Puntaje numérico de metodología (0-20)',
+        example: 16.5,
+        required: false
     })
+    @IsOptional()
     @IsNumber({}, { message: 'El puntaje de metodología debe ser un número' })
     @Min(0, { message: 'El puntaje de metodología mínimo es 0' })
     @Max(20, { message: 'El puntaje de metodología máximo es 20' })
-    puntajeMetodologia: number;
+    puntajeMetodologiaNumerico?: number;
 
     @ApiProperty({
-        description: 'Puntaje de puntualidad (0-20)',
-        example: 15.0
+        description: 'Puntaje numérico de puntualidad (0-20)',
+        example: 15.0,
+        required: false
     })
+    @IsOptional()
     @IsNumber({}, { message: 'El puntaje de puntualidad debe ser un número' })
     @Min(0, { message: 'El puntaje de puntualidad mínimo es 0' })
     @Max(20, { message: 'El puntaje de puntualidad máximo es 20' })
-    puntajePuntualidad: number;
+    puntajePuntualidadNumerico?: number;
 
     @ApiProperty({
-        description: 'Puntaje de creatividad (0-20)',
-        example: 17.0
+        description: 'Puntaje numérico de creatividad (0-20)',
+        example: 17.0,
+        required: false
     })
+    @IsOptional()
     @IsNumber({}, { message: 'El puntaje de creatividad debe ser un número' })
     @Min(0, { message: 'El puntaje de creatividad mínimo es 0' })
     @Max(20, { message: 'El puntaje de creatividad máximo es 20' })
-    puntajeCreatividad: number;
+    puntajeCreatividadNumerico?: number;
 
     @ApiProperty({
-        description: 'Puntaje de comunicación (0-20)',
-        example: 19.0
+        description: 'Puntaje numérico de comunicación (0-20)',
+        example: 19.0,
+        required: false
     })
+    @IsOptional()
     @IsNumber({}, { message: 'El puntaje de comunicación debe ser un número' })
     @Min(0, { message: 'El puntaje de comunicación mínimo es 0' })
     @Max(20, { message: 'El puntaje de comunicación máximo es 20' })
-    puntajeComunicacion: number;
+    puntajeComunicacionNumerico?: number;
+
+    // CAMPOS LITERALES (A, B, C, AD) - Opcionales según configuración
+    @ApiProperty({
+        description: 'Calificación literal de planificación',
+        enum: CalificacionLiteral,
+        example: CalificacionLiteral.A,
+        required: false
+    })
+    @IsOptional()
+    @IsEnum(CalificacionLiteral, { message: 'La calificación de planificación debe ser A, B, C o AD' })
+    puntajePlanificacionLiteral?: CalificacionLiteral;
+
+    @ApiProperty({
+        description: 'Calificación literal de metodología',
+        enum: CalificacionLiteral,
+        example: CalificacionLiteral.B,
+        required: false
+    })
+    @IsOptional()
+    @IsEnum(CalificacionLiteral, { message: 'La calificación de metodología debe ser A, B, C o AD' })
+    puntajeMetodologiaLiteral?: CalificacionLiteral;
+
+    @ApiProperty({
+        description: 'Calificación literal de puntualidad',
+        enum: CalificacionLiteral,
+        example: CalificacionLiteral.A,
+        required: false
+    })
+    @IsOptional()
+    @IsEnum(CalificacionLiteral, { message: 'La calificación de puntualidad debe ser A, B, C o AD' })
+    puntajePuntualidadLiteral?: CalificacionLiteral;
+
+    @ApiProperty({
+        description: 'Calificación literal de creatividad',
+        enum: CalificacionLiteral,
+        example: CalificacionLiteral.B,
+        required: false
+    })
+    @IsOptional()
+    @IsEnum(CalificacionLiteral, { message: 'La calificación de creatividad debe ser A, B, C o AD' })
+    puntajeCreatividadLiteral?: CalificacionLiteral;
+
+    @ApiProperty({
+        description: 'Calificación literal de comunicación',
+        enum: CalificacionLiteral,
+        example: CalificacionLiteral.A,
+        required: false
+    })
+    @IsOptional()
+    @IsEnum(CalificacionLiteral, { message: 'La calificación de comunicación debe ser A, B, C o AD' })
+    puntajeComunicacionLiteral?: CalificacionLiteral;
+
+    // CAMPOS PARA RETROCOMPATIBILIDAD (DEPRECATED)
+    @ApiProperty({
+        description: '[DEPRECATED] Usar puntajePlanificacionNumerico en su lugar',
+        example: 18.5,
+        required: false
+    })
+    @IsOptional()
+    @IsNumber({}, { message: 'El puntaje de planificación debe ser un número' })
+    @Min(0, { message: 'El puntaje de planificación mínimo es 0' })
+    @Max(20, { message: 'El puntaje de planificación máximo es 20' })
+    puntajePlanificacion?: number;
+
+    @ApiProperty({
+        description: '[DEPRECATED] Usar puntajeMetodologiaNumerico en su lugar',
+        example: 16.5,
+        required: false
+    })
+    @IsOptional()
+    @IsNumber({}, { message: 'El puntaje de metodología debe ser un número' })
+    @Min(0, { message: 'El puntaje de metodología mínimo es 0' })
+    @Max(20, { message: 'El puntaje de metodología máximo es 20' })
+    puntajeMetodologia?: number;
+
+    @ApiProperty({
+        description: '[DEPRECATED] Usar puntajePuntualidadNumerico en su lugar',
+        example: 15.0,
+        required: false
+    })
+    @IsOptional()
+    @IsNumber({}, { message: 'El puntaje de puntualidad debe ser un número' })
+    @Min(0, { message: 'El puntaje de puntualidad mínimo es 0' })
+    @Max(20, { message: 'El puntaje de puntualidad máximo es 20' })
+    puntajePuntualidad?: number;
+
+    @ApiProperty({
+        description: '[DEPRECATED] Usar puntajeCreatividadNumerico en su lugar',
+        example: 17.0,
+        required: false
+    })
+    @IsOptional()
+    @IsNumber({}, { message: 'El puntaje de creatividad debe ser un número' })
+    @Min(0, { message: 'El puntaje de creatividad mínimo es 0' })
+    @Max(20, { message: 'El puntaje de creatividad máximo es 20' })
+    puntajeCreatividad?: number;
+
+    @ApiProperty({
+        description: '[DEPRECATED] Usar puntajeComunicacionNumerico en su lugar',
+        example: 19.0,
+        required: false
+    })
+    @IsOptional()
+    @IsNumber({}, { message: 'El puntaje de comunicación debe ser un número' })
+    @Min(0, { message: 'El puntaje de comunicación mínimo es 0' })
+    @Max(20, { message: 'El puntaje de comunicación máximo es 20' })
+    puntajeComunicacion?: number;
 
     @ApiProperty({
         description: 'ID del trabajador (docente) evaluado',

@@ -3,11 +3,11 @@ import { CreateEvualuacionDocenteBimestralDto } from './dto/create-evualuacion-d
 import { UpdateEvualuacionDocenteBimestralDto } from './dto/update-evualuacion-docente-bimestral.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EvaluacionDocenteBimestral } from './entities/evualuacion-docente-bimestral.entity';
-import { Bimestre } from '../bimestre/entities/bimestre.entity';
 import { Trabajador } from '../trabajador/entities/trabajador.entity';
 import { Repository } from 'typeorm';
 import { ObservacionDocenteService } from '../observacion-docente/observacion-docente.service';
 import { BimestreService } from 'src/bimestre/bimestre.service';
+import { TipoCalificacion, CalificacionLiteral } from './enums/tipo-calificacion.enum';
 
 @Injectable()
 export class EvualuacionDocenteBimestralService {
@@ -22,7 +22,7 @@ export class EvualuacionDocenteBimestralService {
   ) { }
 
   // Solo coordinadores pueden crear evaluaciones
-  async create(createEvaluacionDto: CreateEvualuacionDocenteBimestralDto, coordinadorId: string): Promise<{ success: boolean; message: string; evaluacion: EvaluacionDocenteBimestral }> {
+  async create(createEvaluacionDto: CreateEvualuacionDocenteBimestralDto, coordinadorId: string): Promise<{ success: boolean; message: string; evaluacion: EvaluacionDocenteBimestral; configuracion?: any }> {
 
     // Validar que el coordinador existe y tiene el rol adecuado
     const coordinador = await this.trabajadorRepository.findOne({
@@ -78,9 +78,8 @@ export class EvualuacionDocenteBimestralService {
       throw new BadRequestException('Ya existe una evaluación para este trabajador en este bimestre');
     }
 
-    // Calcular puntaje total y calificación final
-    const puntajeTotal = this.calcularPuntajeTotal(createEvaluacionDto);
-    const calificacionFinal = this.determinarCalificacionFinal(puntajeTotal);
+    // Procesamiento configurativo basado en tipoCalificacion
+    const { puntajesNumericos, calificacionFinal, configuracion } = this.procesarCalificaciones(createEvaluacionDto);
 
     // Obtener observaciones del trabajador para incluir en la evaluación
     const observacionesDocente = await this.observacionDocenteService.findByTrabajador(createEvaluacionDto.idTrabajador);
@@ -98,14 +97,14 @@ export class EvualuacionDocenteBimestralService {
       observacionesFinal += `\n\nObservaciones registradas durante el bimestre:\n${resumenObservaciones}`;
     }
 
-    // Crear la evaluación
+    // Crear la evaluación con valores procesados
     const evaluacion = this.evaluacionRepository.create({
-      puntajePlanificacion: createEvaluacionDto.puntajePlanificacion.toString(),
-      puntajeMetodologia: createEvaluacionDto.puntajeMetodologia.toString(),
-      puntajePuntualidad: createEvaluacionDto.puntajePuntualidad.toString(),
-      puntajeCreatividad: createEvaluacionDto.puntajeCreatividad.toString(),
-      puntajeComunicacion: createEvaluacionDto.puntajeComunicacion.toString(),
-      puntajeTotal: puntajeTotal.toString(),
+      puntajePlanificacion: puntajesNumericos.planificacion.toString(),
+      puntajeMetodologia: puntajesNumericos.metodologia.toString(),
+      puntajePuntualidad: puntajesNumericos.puntualidad.toString(),
+      puntajeCreatividad: puntajesNumericos.creatividad.toString(),
+      puntajeComunicacion: puntajesNumericos.comunicacion.toString(),
+      puntajeTotal: puntajesNumericos.total.toString(),
       calificacionFinal,
       observaciones: observacionesFinal,
       fechaEvaluacion: createEvaluacionDto.fechaEvaluacion || new Date().toISOString().split('T')[0],
@@ -126,25 +125,200 @@ export class EvualuacionDocenteBimestralService {
 
     return {
       success: true,
-      message: `Evaluación docente creada correctamente. Calificación final: ${calificacionFinal}`,
-      evaluacion: savedEvaluacion
+      message: `Evaluación creada. Modo: ${createEvaluacionDto.tipoCalificacion}. Calificación final: ${calificacionFinal}`,
+      evaluacion: savedEvaluacion,
+      configuracion
     };
   }
 
-  // Calcular puntaje total (promedio de los 5 criterios)
-  private calcularPuntajeTotal(dto: CreateEvualuacionDocenteBimestralDto): number {
-    const suma = dto.puntajePlanificacion + dto.puntajeMetodologia +
-      dto.puntajePuntualidad + dto.puntajeCreatividad + dto.puntajeComunicacion;
+  // Método principal para procesar calificaciones según configuración
+  private procesarCalificaciones(dto: CreateEvualuacionDocenteBimestralDto): {
+    puntajesNumericos: any;
+    calificacionFinal: string;
+    configuracion: any;
+  } {
+    // Detectar modo automáticamente si no se especifica o por retrocompatibilidad
+    let tipoCalificacion = dto.tipoCalificacion;
+
+    if (!tipoCalificacion) {
+      // Modo retrocompatibilidad: detectar automáticamente
+      if (dto.puntajePlanificacion !== undefined) {
+        tipoCalificacion = TipoCalificacion.NUMERICA;
+      } else if (dto.puntajePlanificacionNumerico !== undefined) {
+        tipoCalificacion = TipoCalificacion.NUMERICA;
+      } else if (dto.puntajePlanificacionLiteral !== undefined) {
+        tipoCalificacion = TipoCalificacion.LITERAL;
+      } else {
+        throw new BadRequestException('Debe especificar el tipo de calificación o proporcionar puntajes válidos');
+      }
+    }
+
+    if (tipoCalificacion === TipoCalificacion.NUMERICA) {
+      return this.procesarCalificacionesNumericas(dto);
+    } else {
+      return this.procesarCalificacionesLiterales(dto);
+    }
+  }
+
+  // Procesar calificaciones cuando el tipo es NUMERICA
+  private procesarCalificacionesNumericas(dto: CreateEvualuacionDocenteBimestralDto): {
+    puntajesNumericos: any;
+    calificacionFinal: string;
+    configuracion: any;
+  } {
+    // Obtener puntajes numéricos (priorizar nuevos campos, usar deprecated como fallback)
+    const puntajesNumericos = {
+      planificacion: dto.puntajePlanificacionNumerico ?? dto.puntajePlanificacion ?? 0,
+      metodologia: dto.puntajeMetodologiaNumerico ?? dto.puntajeMetodologia ?? 0,
+      puntualidad: dto.puntajePuntualidadNumerico ?? dto.puntajePuntualidad ?? 0,
+      creatividad: dto.puntajeCreatividadNumerico ?? dto.puntajeCreatividad ?? 0,
+      comunicacion: dto.puntajeComunicacionNumerico ?? dto.puntajeComunicacion ?? 0,
+      total: 0
+    };
+
+    // Validar que todos los puntajes estén presentes
+    if (puntajesNumericos.planificacion === 0 || puntajesNumericos.metodologia === 0 ||
+      puntajesNumericos.puntualidad === 0 || puntajesNumericos.creatividad === 0 ||
+      puntajesNumericos.comunicacion === 0) {
+      throw new BadRequestException('Todos los puntajes numéricos son requeridos para el modo NUMERICA');
+    }
+
+    puntajesNumericos.total = this.calcularPuntajeTotalNumerico(puntajesNumericos);
+    const calificacionFinal = this.determinarCalificacionFinalNumerica(puntajesNumericos.total);
+
+    return {
+      puntajesNumericos,
+      calificacionFinal,
+      configuracion: {
+        tipoUtilizado: TipoCalificacion.NUMERICA,
+        modoConversion: 'DIRECTO',
+        valoresOriginales: puntajesNumericos,
+        valoresAlmacenados: puntajesNumericos
+      }
+    };
+  }
+
+  // Procesar calificaciones cuando el tipo es LITERAL
+  private procesarCalificacionesLiterales(dto: CreateEvualuacionDocenteBimestralDto): {
+    puntajesNumericos: any;
+    calificacionFinal: string;
+    configuracion: any;
+  } {
+    // Validar que todos los puntajes literales estén presentes
+    if (!dto.puntajePlanificacionLiteral || !dto.puntajeMetodologiaLiteral ||
+      !dto.puntajePuntualidadLiteral || !dto.puntajeCreatividadLiteral ||
+      !dto.puntajeComunicacionLiteral) {
+      throw new BadRequestException('Todos los puntajes literales son requeridos para el modo LITERAL');
+    }
+
+    const valoresOriginales = {
+      planificacion: dto.puntajePlanificacionLiteral,
+      metodologia: dto.puntajeMetodologiaLiteral,
+      puntualidad: dto.puntajePuntualidadLiteral,
+      creatividad: dto.puntajeCreatividadLiteral,
+      comunicacion: dto.puntajeComunicacionLiteral
+    };
+
+    // Convertir a numérico para almacenamiento
+    const puntajesNumericos = {
+      planificacion: this.convertirLiteralANumerico(dto.puntajePlanificacionLiteral),
+      metodologia: this.convertirLiteralANumerico(dto.puntajeMetodologiaLiteral),
+      puntualidad: this.convertirLiteralANumerico(dto.puntajePuntualidadLiteral),
+      creatividad: this.convertirLiteralANumerico(dto.puntajeCreatividadLiteral),
+      comunicacion: this.convertirLiteralANumerico(dto.puntajeComunicacionLiteral),
+      total: 0
+    };
+
+    puntajesNumericos.total = this.calcularPuntajeTotalNumerico(puntajesNumericos);
+
+    // En modo literal, la calificación final se basa en el promedio literal
+    const calificacionFinal = this.determinarCalificacionLiteralPromedio(valoresOriginales);
+
+    return {
+      puntajesNumericos,
+      calificacionFinal,
+      configuracion: {
+        tipoUtilizado: TipoCalificacion.LITERAL,
+        modoConversion: 'LITERAL_A_NUMERICO',
+        valoresOriginales,
+        valoresAlmacenados: puntajesNumericos
+      }
+    };
+  }
+
+  // Calcular puntaje total numérico (promedio de los 5 criterios)
+  private calcularPuntajeTotalNumerico(puntajes: any): number {
+    const suma = puntajes.planificacion + puntajes.metodologia +
+      puntajes.puntualidad + puntajes.creatividad + puntajes.comunicacion;
     return Math.round((suma / 5) * 100) / 100; // Redondear a 2 decimales
   }
 
-  // Determinar calificación final basada en el puntaje
+  // Determinar calificación final basada en el puntaje numérico
+  private determinarCalificacionFinalNumerica(puntajeTotal: number): string {
+    if (puntajeTotal >= 18) return 'A';  // Excelente
+    if (puntajeTotal >= 15) return 'B';  // Bueno
+    if (puntajeTotal >= 12) return 'C';  // Regular
+    if (puntajeTotal >= 10) return 'AD'; // Deficiente (cambiado de D a AD)
+    return 'AD';                         // Muy deficiente (cambiado de E a AD)
+  }
+
+  // Convertir calificación literal a valor numérico para almacenamiento
+  private convertirLiteralANumerico(literal: CalificacionLiteral): number {
+    const conversion = {
+      [CalificacionLiteral.A]: 19,   // Excelente (18-20)
+      [CalificacionLiteral.B]: 16,   // Bueno (15-17)
+      [CalificacionLiteral.C]: 13,   // Regular (12-14)
+      [CalificacionLiteral.AD]: 9    // Deficiente (0-11)
+    };
+    return conversion[literal];
+  }
+
+  // Determinar calificación final basada en calificaciones literales
+  private determinarCalificacionLiteralPromedio(valoresLiterales: any): string {
+    const literales = [
+      valoresLiterales.planificacion,
+      valoresLiterales.metodologia,
+      valoresLiterales.puntualidad,
+      valoresLiterales.creatividad,
+      valoresLiterales.comunicacion
+    ];
+
+    // Contar frecuencia de cada calificación
+    const conteo = literales.reduce((acc, literal) => {
+      acc[literal] = (acc[literal] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Determinar calificación predominante
+    // Priorizar calificaciones más altas en caso de empate
+    const prioridad = [CalificacionLiteral.A, CalificacionLiteral.B, CalificacionLiteral.C, CalificacionLiteral.AD];
+
+    for (const calificacion of prioridad) {
+      if (conteo[calificacion] >= 3) { // Si hay 3 o más de la misma calificación
+        return calificacion;
+      }
+    }
+
+    // Si no hay predominancia clara, usar la más frecuente
+    const predominante = Object.keys(conteo).reduce((a, b) => conteo[a] > conteo[b] ? a : b);
+
+    return predominante;
+  }
+
+  // Calcular puntaje total (método legacy para retrocompatibilidad)
+  private calcularPuntajeTotal(dto: CreateEvualuacionDocenteBimestralDto): number {
+    const suma = (dto.puntajePlanificacion || 0) + (dto.puntajeMetodologia || 0) +
+      (dto.puntajePuntualidad || 0) + (dto.puntajeCreatividad || 0) + (dto.puntajeComunicacion || 0);
+    return Math.round((suma / 5) * 100) / 100; // Redondear a 2 decimales
+  }
+
+  // Determinar calificación final basada en el puntaje (método legacy para retrocompatibilidad)
   private determinarCalificacionFinal(puntajeTotal: number): string {
     if (puntajeTotal >= 18) return 'A';  // Excelente
     if (puntajeTotal >= 15) return 'B';  // Bueno
     if (puntajeTotal >= 12) return 'C';  // Regular
-    if (puntajeTotal >= 10) return 'D';  // Deficiente
-    return 'E';                          // Muy deficiente
+    if (puntajeTotal >= 10) return 'AD'; // Deficiente (cambiado de D a AD)
+    return 'AD';                         // Muy deficiente (cambiado de E a AD)
   }
 
   // Generar reporte detallado de evaluación
@@ -273,33 +447,86 @@ export class EvualuacionDocenteBimestralService {
     // Recalcular puntajes si se actualizan los criterios
     let updateData: any = { ...updateEvaluacionDto };
 
-    if (updateEvaluacionDto.puntajePlanificacion || updateEvaluacionDto.puntajeMetodologia ||
-      updateEvaluacionDto.puntajePuntualidad || updateEvaluacionDto.puntajeCreatividad ||
-      updateEvaluacionDto.puntajeComunicacion) {
+    // Verificar si hay cambios en puntajes (tanto nuevos campos como deprecated)
+    const hayPuntajesNumericos = updateEvaluacionDto.puntajePlanificacionNumerico !== undefined ||
+      updateEvaluacionDto.puntajeMetodologiaNumerico !== undefined ||
+      updateEvaluacionDto.puntajePuntualidadNumerico !== undefined ||
+      updateEvaluacionDto.puntajeCreatividadNumerico !== undefined ||
+      updateEvaluacionDto.puntajeComunicacionNumerico !== undefined;
 
-      const datosActuales = {
-        puntajePlanificacion: updateEvaluacionDto.puntajePlanificacion || parseFloat(evaluacion.puntajePlanificacion),
-        puntajeMetodologia: updateEvaluacionDto.puntajeMetodologia || parseFloat(evaluacion.puntajeMetodologia),
-        puntajePuntualidad: updateEvaluacionDto.puntajePuntualidad || parseFloat(evaluacion.puntajePuntualidad),
-        puntajeCreatividad: updateEvaluacionDto.puntajeCreatividad || parseFloat(evaluacion.puntajeCreatividad),
-        puntajeComunicacion: updateEvaluacionDto.puntajeComunicacion || parseFloat(evaluacion.puntajeComunicacion),
+    const hayPuntajesLiterales = updateEvaluacionDto.puntajePlanificacionLiteral !== undefined ||
+      updateEvaluacionDto.puntajeMetodologiaLiteral !== undefined ||
+      updateEvaluacionDto.puntajePuntualidadLiteral !== undefined ||
+      updateEvaluacionDto.puntajeCreatividadLiteral !== undefined ||
+      updateEvaluacionDto.puntajeComunicacionLiteral !== undefined;
+
+    const hayPuntajesDeprecated = updateEvaluacionDto.puntajePlanificacion !== undefined ||
+      updateEvaluacionDto.puntajeMetodologia !== undefined ||
+      updateEvaluacionDto.puntajePuntualidad !== undefined ||
+      updateEvaluacionDto.puntajeCreatividad !== undefined ||
+      updateEvaluacionDto.puntajeComunicacion !== undefined;
+
+    if (hayPuntajesNumericos || hayPuntajesLiterales || hayPuntajesDeprecated) {
+      // Crear DTO temporal para procesar con la nueva lógica
+      const dtoTemporal: CreateEvualuacionDocenteBimestralDto = {
+        // Determinar tipo de calificación basado en los campos proporcionados
+        tipoCalificacion: updateEvaluacionDto.tipoCalificacion ||
+          (hayPuntajesLiterales ? TipoCalificacion.LITERAL : TipoCalificacion.NUMERICA),
+
+        // Campos numéricos (usar valores del update o mantener existentes)
+        puntajePlanificacionNumerico: updateEvaluacionDto.puntajePlanificacionNumerico ??
+          updateEvaluacionDto.puntajePlanificacion ??
+          parseFloat(evaluacion.puntajePlanificacion),
+        puntajeMetodologiaNumerico: updateEvaluacionDto.puntajeMetodologiaNumerico ??
+          updateEvaluacionDto.puntajeMetodologia ??
+          parseFloat(evaluacion.puntajeMetodologia),
+        puntajePuntualidadNumerico: updateEvaluacionDto.puntajePuntualidadNumerico ??
+          updateEvaluacionDto.puntajePuntualidad ??
+          parseFloat(evaluacion.puntajePuntualidad),
+        puntajeCreatividadNumerico: updateEvaluacionDto.puntajeCreatividadNumerico ??
+          updateEvaluacionDto.puntajeCreatividad ??
+          parseFloat(evaluacion.puntajeCreatividad),
+        puntajeComunicacionNumerico: updateEvaluacionDto.puntajeComunicacionNumerico ??
+          updateEvaluacionDto.puntajeComunicacion ??
+          parseFloat(evaluacion.puntajeComunicacion),
+
+        // Campos literales
+        puntajePlanificacionLiteral: updateEvaluacionDto.puntajePlanificacionLiteral,
+        puntajeMetodologiaLiteral: updateEvaluacionDto.puntajeMetodologiaLiteral,
+        puntajePuntualidadLiteral: updateEvaluacionDto.puntajePuntualidadLiteral,
+        puntajeCreatividadLiteral: updateEvaluacionDto.puntajeCreatividadLiteral,
+        puntajeComunicacionLiteral: updateEvaluacionDto.puntajeComunicacionLiteral,
+
+        // Campos requeridos (no se usan en el procesamiento pero son necesarios para el DTO)
         idTrabajador: evaluacion.idTrabajador,
         idBimestre: evaluacion.idBimestre,
         idCoordinador: evaluacion.idCoordinador.idTrabajador
       };
 
-      const nuevoPuntajeTotal = this.calcularPuntajeTotal(datosActuales);
-      const nuevaCalificacion = this.determinarCalificacionFinal(nuevoPuntajeTotal);
+      // Procesar con la nueva lógica
+      const { puntajesNumericos, calificacionFinal } = this.procesarCalificaciones(dtoTemporal);
 
-      updateData.puntajeTotal = nuevoPuntajeTotal.toString();
-      updateData.calificacionFinal = nuevaCalificacion;
+      // Actualizar datos con los valores procesados
+      updateData.puntajePlanificacion = puntajesNumericos.planificacion.toString();
+      updateData.puntajeMetodologia = puntajesNumericos.metodologia.toString();
+      updateData.puntajePuntualidad = puntajesNumericos.puntualidad.toString();
+      updateData.puntajeCreatividad = puntajesNumericos.creatividad.toString();
+      updateData.puntajeComunicacion = puntajesNumericos.comunicacion.toString();
+      updateData.puntajeTotal = puntajesNumericos.total.toString();
+      updateData.calificacionFinal = calificacionFinal;
 
-      // Convertir números a strings para la BD
-      if (updateData.puntajePlanificacion) updateData.puntajePlanificacion = updateData.puntajePlanificacion.toString();
-      if (updateData.puntajeMetodologia) updateData.puntajeMetodologia = updateData.puntajeMetodologia.toString();
-      if (updateData.puntajePuntualidad) updateData.puntajePuntualidad = updateData.puntajePuntualidad.toString();
-      if (updateData.puntajeCreatividad) updateData.puntajeCreatividad = updateData.puntajeCreatividad.toString();
-      if (updateData.puntajeComunicacion) updateData.puntajeComunicacion = updateData.puntajeComunicacion.toString();
+      // Limpiar campos no almacenables
+      delete updateData.tipoCalificacion;
+      delete updateData.puntajePlanificacionNumerico;
+      delete updateData.puntajeMetodologiaNumerico;
+      delete updateData.puntajePuntualidadNumerico;
+      delete updateData.puntajeCreatividadNumerico;
+      delete updateData.puntajeComunicacionNumerico;
+      delete updateData.puntajePlanificacionLiteral;
+      delete updateData.puntajeMetodologiaLiteral;
+      delete updateData.puntajePuntualidadLiteral;
+      delete updateData.puntajeCreatividadLiteral;
+      delete updateData.puntajeComunicacionLiteral;
     }
 
     // Excluir campos que no se pueden actualizar directamente
