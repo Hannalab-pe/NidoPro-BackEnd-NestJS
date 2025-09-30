@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { NotaService } from './nota.service';
 import { CreateNotaDto, CreateNotaTareaDto, CreateNotaKinderDto, CreateNotaTareaKinderDto } from './dto/create-nota.dto';
-import { UpdateNotaDto } from './dto/update-nota.dto';
+import { UpdateNotaDto, UpdateNotaKinderDto } from './dto/update-nota.dto';
+import { QueryNotaDto } from './dto/query-nota.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('Notas')
@@ -116,13 +117,18 @@ export class NotaController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtener todas las notas registradas' })
-  async findAll() {
-    const data = await this.notaService.findAll();
+  @ApiOperation({
+    summary: 'Obtener todas las notas registradas',
+    description: 'Permite obtener las notas en formato numérico (0-20) o literal (AD, A, B, C). Por defecto es numérico.'
+  })
+  async findAll(@Query() queryDto: QueryNotaDto) {
+    const data = await this.notaService.findAll(queryDto.tipo);
     return {
       success: true,
-      message: "Notas Listadas Correctamente",
+      message: `Notas Listadas Correctamente en formato ${queryDto.tipo || 'NUMERICO'}`,
       info: {
+        tipoVisualizacion: queryDto.tipo || 'NUMERICO',
+        totalNotas: data.length,
         data,
       }
     };
@@ -142,12 +148,25 @@ export class NotaController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar una nota de evaluación' })
+  @ApiOperation({ summary: 'Actualizar una nota de evaluación con puntaje numérico' })
   async update(@Param('id') id: string, @Body() updateNotaDto: UpdateNotaDto) {
     const data = await this.notaService.update(id, updateNotaDto);
     return {
       success: true,
       message: `Nota Actualizada Correctamente con el ID ${id}`,
+      info: {
+        data,
+      }
+    };
+  }
+
+  @Patch('kinder/:id')
+  @ApiOperation({ summary: 'Actualizar una nota de evaluación con calificación literal (A, B, C, AD)' })
+  async updateKinder(@Param('id') id: string, @Body() updateNotaKinderDto: UpdateNotaKinderDto) {
+    const data = await this.notaService.updateKinder(id, updateNotaKinderDto);
+    return {
+      success: true,
+      message: `Nota de Kinder Actualizada Correctamente con el ID ${id}`,
       info: {
         data,
       }

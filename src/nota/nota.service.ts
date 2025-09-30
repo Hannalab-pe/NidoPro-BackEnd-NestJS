@@ -255,29 +255,116 @@ export class NotaService {
     return await this.notaRepository.save(nota);
   }
 
-  async findAll(): Promise<Nota[]> {
-    return await this.notaRepository.find();
+  async findAll(tipo?: 'NUMERICO' | 'LITERAL'): Promise<any> {
+    const notas = await this.notaRepository.find({
+      relations: ['idEstudiante2', 'idEvaluacion2', 'idEvaluacion2.idCurso', 'idTarea']
+    });
+
+    if (!tipo || tipo === 'NUMERICO') {
+      // Formato numérico (por defecto)
+      return notas.map(nota => ({
+        idNota: nota.idNota,
+        puntaje: parseFloat(nota.puntaje),
+        estaAprobado: nota.estaAprobado,
+        observaciones: nota.observaciones,
+        estudiante: nota.idEstudiante2 ? {
+          idEstudiante: nota.idEstudiante2.idEstudiante,
+          nombre: nota.idEstudiante2.nombre,
+          apellido: nota.idEstudiante2.apellido
+        } : null,
+        evaluacion: nota.idEvaluacion2 ? {
+          idEvaluacion: nota.idEvaluacion2.idEvaluacion,
+          descripcion: nota.idEvaluacion2.descripcion,
+          fecha: nota.idEvaluacion2.fecha,
+          tipoEvaluacion: nota.idEvaluacion2.tipoEvaluacion,
+          curso: nota.idEvaluacion2.idCurso ? {
+            idCurso: nota.idEvaluacion2.idCurso.idCurso,
+            nombreCurso: nota.idEvaluacion2.idCurso.nombreCurso
+          } : null
+        } : null,
+        tarea: nota.idTarea ? {
+          idTarea: nota.idTarea.idTarea,
+          titulo: nota.idTarea.titulo,
+          descripcion: nota.idTarea.descripcion,
+          fechaAsignacion: nota.idTarea.fechaAsignacion,
+          fechaEntrega: nota.idTarea.fechaEntrega
+        } : null
+      }));
+    } else {
+      // Formato literal (sistema kinder)
+      return notas.map(nota => {
+        const puntaje = parseFloat(nota.puntaje);
+        const calificacionLiteral = this.convertirPuntajeALetra(puntaje);
+        const nivelLogro = this.obtenerNivelLogro(calificacionLiteral);
+
+        return {
+          idNota: nota.idNota,
+          calificacion: calificacionLiteral,
+          nivelLogro: nivelLogro,
+          puntajeNumerico: puntaje, // Incluimos también el puntaje numérico para referencia
+          estaAprobado: nota.estaAprobado,
+          observaciones: nota.observaciones,
+          estudiante: nota.idEstudiante2 ? {
+            idEstudiante: nota.idEstudiante2.idEstudiante,
+            nombre: nota.idEstudiante2.nombre,
+            apellido: nota.idEstudiante2.apellido
+          } : null,
+          evaluacion: nota.idEvaluacion2 ? {
+            idEvaluacion: nota.idEvaluacion2.idEvaluacion,
+            descripcion: nota.idEvaluacion2.descripcion,
+            fecha: nota.idEvaluacion2.fecha,
+            tipoEvaluacion: nota.idEvaluacion2.tipoEvaluacion,
+            curso: nota.idEvaluacion2.idCurso ? {
+              idCurso: nota.idEvaluacion2.idCurso.idCurso,
+              nombreCurso: nota.idEvaluacion2.idCurso.nombreCurso
+            } : null
+          } : null,
+          tarea: nota.idTarea ? {
+            idTarea: nota.idTarea.idTarea,
+            titulo: nota.idTarea.titulo,
+            descripcion: nota.idTarea.descripcion,
+            fechaAsignacion: nota.idTarea.fechaAsignacion,
+            fechaEntrega: nota.idTarea.fechaEntrega
+          } : null
+        };
+      });
+    }
   }
 
   async findOne(id: string): Promise<Nota | null> {
     return await this.notaRepository.findOne({ where: { idNota: id } });
   }
 
-  async update(id: string, updateNotaDto: UpdateNotaDto): Promise<Nota | null> {
-    const notaFound = await this.notaRepository.findOne({ where: { idNota: id } });
+  async update(id: string, updateNotaDto: UpdateNotaDto): Promise<any> {
+    const notaFound = await this.notaRepository.findOne({
+      where: { idNota: id },
+      relations: ['idEstudiante2', 'idEvaluacion2', 'idEvaluacion2.idCurso']
+    });
+
     if (!notaFound) {
-      throw new NotFoundException(`Nota with id ${id} not found`);
+      throw new NotFoundException(`Nota con ID ${id} no encontrada`);
     }
 
-    const updateData: any = {
-      estaAprobado: updateNotaDto.estaAprobado,
-      observaciones: updateNotaDto.observaciones,
-    };
+    const updateData: any = {};
 
+    // Actualizar observaciones si se proporciona
+    if (updateNotaDto.observaciones !== undefined) {
+      updateData.observaciones = updateNotaDto.observaciones;
+    }
+
+    // Actualizar puntaje y calcular estaAprobado automáticamente
     if (updateNotaDto.puntaje !== undefined) {
       updateData.puntaje = updateNotaDto.puntaje.toString();
+      // Calcular automáticamente estaAprobado basado en el puntaje
+      updateData.estaAprobado = updateNotaDto.puntaje >= 11;
     }
 
+    // Si se proporciona estaAprobado explícitamente, usarlo
+    if (updateNotaDto.estaAprobado !== undefined) {
+      updateData.estaAprobado = updateNotaDto.estaAprobado;
+    }
+
+    // Actualizar relaciones si se proporciona
     if (updateNotaDto.idEvaluacion) {
       updateData.idEvaluacion = updateNotaDto.idEvaluacion;
       updateData.idEvaluacion2 = { idEvaluacion: updateNotaDto.idEvaluacion };
@@ -289,7 +376,75 @@ export class NotaService {
     }
 
     await this.notaRepository.update({ idNota: id }, updateData);
-    return this.findOne(id);
+
+    const notaActualizada = await this.notaRepository.findOne({
+      where: { idNota: id },
+      relations: ['idEstudiante2', 'idEvaluacion2', 'idEvaluacion2.idCurso', 'idTarea']
+    });
+
+    return {
+      success: true,
+      message: 'Nota actualizada exitosamente',
+      nota: notaActualizada
+    };
+  }
+
+  // Método para actualizar notas con calificación literal (sistema kinder)
+  async updateKinder(id: string, updateNotaKinderDto: any): Promise<any> {
+    const notaFound = await this.notaRepository.findOne({
+      where: { idNota: id },
+      relations: ['idEstudiante2', 'idEvaluacion2', 'idEvaluacion2.idCurso']
+    });
+
+    if (!notaFound) {
+      throw new NotFoundException(`Nota con ID ${id} no encontrada`);
+    }
+
+    const updateData: any = {};
+
+    // Actualizar observaciones si se proporciona
+    if (updateNotaKinderDto.observaciones !== undefined) {
+      updateData.observaciones = updateNotaKinderDto.observaciones;
+    }
+
+    // Actualizar calificación literal y convertir a puntaje numérico
+    if (updateNotaKinderDto.calificacion) {
+      const puntajeNumerico = this.calificacionLiteralANumero(updateNotaKinderDto.calificacion);
+      updateData.puntaje = puntajeNumerico.toString();
+      updateData.estaAprobado = ['AD', 'A', 'B'].includes(updateNotaKinderDto.calificacion);
+    }
+
+    // Actualizar relaciones si se proporciona
+    if (updateNotaKinderDto.idEvaluacion) {
+      updateData.idEvaluacion = updateNotaKinderDto.idEvaluacion;
+      updateData.idEvaluacion2 = { idEvaluacion: updateNotaKinderDto.idEvaluacion };
+    }
+
+    if (updateNotaKinderDto.idEstudiante) {
+      updateData.idEstudiante = updateNotaKinderDto.idEstudiante;
+      updateData.idEstudiante2 = { idEstudiante: updateNotaKinderDto.idEstudiante };
+    }
+
+    await this.notaRepository.update({ idNota: id }, updateData);
+
+    const notaActualizada = await this.notaRepository.findOne({
+      where: { idNota: id },
+      relations: ['idEstudiante2', 'idEvaluacion2', 'idEvaluacion2.idCurso', 'idTarea']
+    });
+
+    if (!notaActualizada) {
+      throw new NotFoundException(`Error al actualizar la nota con ID ${id}`);
+    }
+
+    return {
+      success: true,
+      message: 'Nota actualizada exitosamente',
+      nota: {
+        ...notaActualizada,
+        calificacionLiteral: updateNotaKinderDto.calificacion,
+        descripcionCalificacion: this.numeroACalificacionLiteral(parseFloat(notaActualizada.puntaje)).descripcion
+      }
+    };
   }
 
   async obtenerLibretaPorAula(idAula: string): Promise<any> {
